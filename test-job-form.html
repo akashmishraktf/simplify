@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Job Application Form - Naukri Style</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Job Application Form</h1>
+        <form id="job-application-form">
+            <div class="form-group">
+                <label for="applicant_name">Full Name *</label>
+                <input type="text" id="applicant_name" name="name" placeholder="Enter your full name" required />
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" placeholder="your@email.com" required />
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Phone Number *</label>
+                <input type="tel" id="phone" name="phone" placeholder="+91 9876543210" required />
+            </div>
+
+            <div class="form-group">
+                <label for="location">Current Location *</label>
+                <input type="text" id="location" name="current_location" placeholder="City, State" required />
+            </div>
+
+            <div class="form-group">
+                <label for="preferred_location">Preferred Work Location</label>
+                <input type="text" id="preferred_location" name="preferred_location" placeholder="Preferred cities" />
+            </div>
+
+            <div class="form-group">
+                <label for="experience">Total Experience (years) *</label>
+                <input type="text" id="experience" name="experience" placeholder="e.g., 5.5" required />
+            </div>
+
+            <div class="form-group">
+                <label for="current_company">Current Company</label>
+                <input type="text" id="current_company" name="company" placeholder="Company name" />
+            </div>
+
+            <div class="form-group">
+                <label for="designation">Current Designation</label>
+                <input type="text" id="designation" name="job_title" placeholder="Your role" />
+            </div>
+
+            <div class="form-group">
+                <label for="current_ctc">Current CTC (Annual)</label>
+                <input type="text" id="current_ctc" name="current_salary" placeholder="e.g., 8,00,000" />
+            </div>
+
+            <div class="form-group">
+                <label for="expected_ctc">Expected CTC (Annual) *</label>
+                <input type="text" id="expected_ctc" name="expected_salary" placeholder="e.g., 12,00,000" required />
+            </div>
+
+            <div class="form-group">
+                <label for="notice_period">Notice Period (days) *</label>
+                <input type="number" id="notice_period" name="notice" placeholder="30" required />
+            </div>
+
+            <div class="form-group">
+                <label for="skills">Key Skills *</label>
+                <textarea id="skills" name="skills" placeholder="List your skills (comma-separated)" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="education">Highest Qualification</label>
+                <input type="text" id="education" name="qualification" placeholder="e.g., B.Tech" />
+            </div>
+
+            <div class="form-group">
+                <label for="college">Institution/College</label>
+                <input type="text" id="college" name="institution" placeholder="e.g., IIT Bombay" />
+            </div>
+
+            <button type="submit">Submit Application</button>
+        </form>
+    </div>
+
+    <script>
+        // Prevent actual form submission for testing
+        document.getElementById('job-application-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Form submission prevented for testing. Check if fields were filled!');
+
+            // Log filled values
+            const formData = new FormData(this);
+            console.log('Form values:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+        });
+
+        // Debug: Log when page loads
+        console.log('Test form loaded. Check for Simplify-for-India messages...');
+    </script>
+</body>
+</html>

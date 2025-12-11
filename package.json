@@ -1,0 +1,19 @@
+{
+    "name": "simplify-for-india-monorepo",
+    "version": "0.0.1",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "build": "npm run build --workspaces",
+        "test": "npm run test --workspaces",
+        "lint": "npm run lint --workspaces"
+    },
+    "devDependencies": {
+        "typescript": "^4.3.5",
+        "eslint": "^8.0.0",
+        "prettier": "^2.3.2"
+    }
+}
