@@ -41,87 +41,129 @@ const ApplicationHistory = () => {
     };
 
     if (loading) {
-        return <div style={{ padding: '10px' }}>Loading applications...</div>;
+        return <div style={{ padding: '12px', color: '#475569' }}>Loading applications…</div>;
     }
 
     if (applications.length === 0) {
         return (
-            <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                <p style={{ fontSize: '12px' }}>No applications yet.</p>
-                <p style={{ fontSize: '11px', marginTop: '10px' }}>
-                    Visit a job portal and use the autofill button to apply for jobs!
+            <div style={{
+                padding: '20px',
+                textAlign: 'center',
+                color: '#475569',
+                background: '#f8fafc',
+                borderRadius: '12px',
+                border: '1px dashed #e2e8f0',
+            }}>
+                <p style={{ fontSize: '13px', margin: 0 }}>No applications yet.</p>
+                <p style={{ fontSize: '12px', marginTop: '6px' }}>
+                    Visit a job portal and use the autofill button to start tracking.
                 </p>
             </div>
         );
     }
 
     const statusColors = {
-        applied: '#2196F3',
-        interviewing: '#FF9800',
-        accepted: '#4CAF50',
-        rejected: '#f44336',
+        applied: '#2563eb',
+        interviewing: '#f59e0b',
+        accepted: '#16a34a',
+        rejected: '#dc2626',
     };
 
     return (
-        <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '10px' }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '14px' }}>Application History</h3>
+        <div style={{ display: 'grid', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>Application history</h3>
+                <span style={{
+                    padding: '6px 10px',
+                    borderRadius: '12px',
+                    background: '#eef2ff',
+                    color: '#4338ca',
+                    fontSize: 12,
+                    fontWeight: 700,
+                }}>
+                    {applications.length} tracked
+                </span>
+            </div>
 
             {applications.map((app) => (
                 <div
                     key={app.id}
                     style={{
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        padding: '10px',
-                        marginBottom: '10px',
-                        backgroundColor: '#f9f9f9',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '14px',
+                        padding: '14px',
+                        backgroundColor: '#ffffff',
+                        boxShadow: '0 8px 18px rgba(15, 23, 42, 0.04)',
                     }}
                 >
                     <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'flex-start',
-                        marginBottom: '8px',
+                        gap: '12px',
                     }}>
                         <div style={{ flex: 1 }}>
-                            <h4 style={{
-                                margin: '0 0 4px 0',
-                                fontSize: '13px',
-                                fontWeight: 'bold',
-                            }}>
-                                {app.jobTitle || 'Job Application'}
-                            </h4>
-                            <p style={{
-                                margin: '0 0 4px 0',
-                                fontSize: '12px',
-                                color: '#666',
-                            }}>
-                                {app.company || new URL(app.url).hostname}
-                            </p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: 4 }}>
+                                <div style={{
+                                    width: 38,
+                                    height: 38,
+                                    borderRadius: '12px',
+                                    background: '#eef2ff',
+                                    color: '#4338ca',
+                                    display: 'grid',
+                                    placeItems: 'center',
+                                    fontWeight: 700,
+                                    fontSize: 13,
+                                }}>
+                                    {(app.company || 'Job')[0]?.toUpperCase()}
+                                </div>
+                                <div>
+                                    <h4 style={{
+                                        margin: 0,
+                                        fontSize: '15px',
+                                        color: '#0f172a',
+                                        fontWeight: 700,
+                                    }}>
+                                        {app.jobTitle || 'Job Application'}
+                                    </h4>
+                                    <p style={{
+                                        margin: '2px 0 0',
+                                        fontSize: '13px',
+                                        color: '#475569',
+                                    }}>
+                                        {app.company || new URL(app.url).hostname}
+                                    </p>
+                                </div>
+                            </div>
+
                             <a
                                 href={app.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{
-                                    fontSize: '10px',
-                                    color: '#0066cc',
+                                    fontSize: '12px',
+                                    color: '#2563eb',
                                     textDecoration: 'none',
                                     wordBreak: 'break-all',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
                                 }}
                             >
-                                View Job →
+                                View job ↗
                             </a>
                         </div>
                         <button
                             onClick={() => handleDelete(app.id)}
                             style={{
-                                padding: '2px 6px',
-                                fontSize: '10px',
-                                backgroundColor: '#f44336',
+                                padding: '8px 10px',
+                                fontSize: '12px',
+                                backgroundColor: '#0f172a',
                                 color: 'white',
                                 border: 'none',
-                                borderRadius: '3px',
+                                borderRadius: '10px',
                                 cursor: 'pointer',
+                                alignSelf: 'flex-start',
                             }}
                         >
                             Delete
@@ -132,26 +174,33 @@ const ApplicationHistory = () => {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        marginTop: '10px',
+                        marginTop: '12px',
+                        gap: '12px',
+                        flexWrap: 'wrap',
                     }}>
                         <span style={{
-                            fontSize: '10px',
-                            color: '#999',
+                            fontSize: '12px',
+                            color: '#475569',
+                            padding: '6px 10px',
+                            background: '#f8fafc',
+                            borderRadius: '10px',
+                            border: '1px solid #e2e8f0',
                         }}>
-                            {new Date(app.dateApplied).toLocaleDateString()}
+                            Applied on {new Date(app.dateApplied).toLocaleDateString()}
                         </span>
 
                         <select
                             value={app.status}
                             onChange={(e) => handleStatusChange(app.id, e.target.value)}
                             style={{
-                                padding: '4px 8px',
-                                fontSize: '10px',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px',
-                                backgroundColor: statusColors[app.status] || '#999',
+                                padding: '10px 12px',
+                                fontSize: '12px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '12px',
+                                backgroundColor: statusColors[app.status] || '#475569',
                                 color: 'white',
                                 cursor: 'pointer',
+                                fontWeight: 700,
                             }}
                         >
                             <option value="applied">Applied</option>
@@ -162,17 +211,6 @@ const ApplicationHistory = () => {
                     </div>
                 </div>
             ))}
-
-            <div style={{
-                marginTop: '15px',
-                padding: '10px',
-                backgroundColor: '#e3f2fd',
-                borderRadius: '6px',
-                fontSize: '11px',
-                color: '#1976d2',
-            }}>
-                <strong>Total Applications:</strong> {applications.length}
-            </div>
         </div>
     );
 };

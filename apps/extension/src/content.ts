@@ -163,6 +163,7 @@ function getFormFieldsMetadata(form: HTMLFormElement | HTMLElement): any[] {
     const fields: any[] = [];
     const elements = form.querySelectorAll('input, select, textarea');
     const processedRadioGroups = new Set<string>();
+    let fieldCounter = 0; // Separate counter for field_id
 
     elements.forEach((element: any, index) => {
         if (element.type === 'hidden' || element.type === 'submit' || element.type === 'button' || element.type === 'image' || element.type === 'reset') {
@@ -279,7 +280,7 @@ function getFormFieldsMetadata(form: HTMLFormElement | HTMLElement): any[] {
             });
 
             fields.push({
-                field_id: `field_${index}`,
+                field_id: `field_${fieldCounter}`,
                 element_type: 'radio',
                 input_type: 'radio',
                 name: groupName,
@@ -293,6 +294,7 @@ function getFormFieldsMetadata(form: HTMLFormElement | HTMLElement): any[] {
                 surrounding_text: surroundingText,
                 section_title: sectionTitle,
             });
+            fieldCounter++;
             return;
         }
 
@@ -336,7 +338,7 @@ function getFormFieldsMetadata(form: HTMLFormElement | HTMLElement): any[] {
                 });
 
                 fields.push({
-                    field_id: `field_${index}`,
+                    field_id: `field_${fieldCounter}`,
                     element_type: 'checkbox',
                     input_type: 'checkbox',
                     name: groupName,
@@ -350,14 +352,16 @@ function getFormFieldsMetadata(form: HTMLFormElement | HTMLElement): any[] {
                     surrounding_text: surroundingText,
                     section_title: sectionTitle,
                 });
+                fieldCounter++;
                 return;
             }
         }
 
         fields.push({
-            field_id: `field_${index}`,
+            field_id: `field_${fieldCounter}`,
             element_type: elementType,
             input_type: element.type || '',
+            tagName: element.tagName,
             name: element.name || '',
             id: element.id || '',
             placeholder: element.placeholder || '',
@@ -369,9 +373,82 @@ function getFormFieldsMetadata(form: HTMLFormElement | HTMLElement): any[] {
             surrounding_text: surroundingText,
             section_title: sectionTitle,
         });
+        fieldCounter++;
     });
 
     return fields;
+}
+
+// Helper function to get filtered elements (same filtering as metadata collection)
+function getFilteredFormElements(form: HTMLFormElement | HTMLElement): (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[] {
+    const allElements = form.querySelectorAll('input, select, textarea');
+    const filtered: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[] = [];
+    const processedRadioGroups = new Set<string>();
+
+    allElements.forEach((element: any) => {
+        // Apply same filters as metadata collection
+        if (element.type === 'hidden' || element.type === 'submit' || element.type === 'button' || element.type === 'image' || element.type === 'reset') {
+            return;
+        }
+        if (element.offsetParent === null && element.type !== 'radio' && element.type !== 'checkbox') {
+            return;
+        }
+
+        // Handle radio groups - only add once per group
+        if (element.type === 'radio') {
+            const groupName = element.name;
+            if (processedRadioGroups.has(groupName)) return;
+            processedRadioGroups.add(groupName);
+        }
+
+        // Handle checkbox groups - only add once per group
+        if (element.type === 'checkbox' && element.name) {
+            const groupName = element.name;
+            const checkboxes = form.querySelectorAll(`input[type="checkbox"][name="${groupName}"]`);
+            if (checkboxes.length > 1) {
+                if (processedRadioGroups.has(`checkbox_${groupName}`)) return;
+                processedRadioGroups.add(`checkbox_${groupName}`);
+            }
+        }
+
+        filtered.push(element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement);
+    });
+
+    return filtered;
+}
+
+// Helper function to find element by metadata
+function findElementByMetadata(form: HTMLFormElement | HTMLElement, metadata: any): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null {
+    // Try to find by ID first (most reliable)
+    if (metadata.id) {
+        const el = form.querySelector(`#${CSS.escape(metadata.id)}`);
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')) {
+            return el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+        }
+    }
+
+    // Try to find by name and type combination
+    if (metadata.name && metadata.input_type) {
+        const selector = metadata.input_type === 'select'
+            ? `select[name="${CSS.escape(metadata.name)}"]`
+            : metadata.tagName === 'TEXTAREA'
+            ? `textarea[name="${CSS.escape(metadata.name)}"]`
+            : `input[name="${CSS.escape(metadata.name)}"][type="${metadata.input_type}"]`;
+        const el = form.querySelector(selector);
+        if (el) {
+            return el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+        }
+    }
+
+    // Try just by name (less reliable but fallback)
+    if (metadata.name) {
+        const el = form.querySelector(`[name="${CSS.escape(metadata.name)}"]`);
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')) {
+            return el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+        }
+    }
+
+    return null;
 }
 
 // Smart fill a single field based on agent result
@@ -384,16 +461,15 @@ function smartFillField(
         confidence: number;
         reasoning: string;
     },
-    elements: NodeListOf<Element>,
+    elements: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[],
     fieldMetadata: any[]
 ): boolean {
     if (result.action === 'skip' || result.confidence < 0.3) {
         return false;
     }
 
-    const fieldIndex = parseInt(result.field_id.replace('field_', ''));
     const metadata = fieldMetadata.find(f => f.field_id === result.field_id);
-    
+
     if (!metadata) {
         console.warn(`[Simplify-for-India] No metadata found for ${result.field_id}`);
         return false;
@@ -402,7 +478,7 @@ function smartFillField(
     try {
         // Handle radio buttons
         if (metadata.element_type === 'radio' && metadata.group_name) {
-            const radios = form.querySelectorAll(`input[type="radio"][name="${metadata.group_name}"]`);
+            const radios = form.querySelectorAll(`input[type="radio"][name="${CSS.escape(metadata.group_name)}"]`);
             for (const radio of Array.from(radios) as HTMLInputElement[]) {
                 if (radio.value === result.value) {
                     radio.checked = true;
@@ -414,7 +490,7 @@ function smartFillField(
             }
             // Try text match if value didn't match
             for (const radio of Array.from(radios) as HTMLInputElement[]) {
-                const labelEl = document.querySelector(`label[for="${radio.id}"]`);
+                const labelEl = radio.id ? document.querySelector(`label[for="${CSS.escape(radio.id)}"]`) : null;
                 const labelText = labelEl?.textContent?.toLowerCase() || '';
                 if (labelText.includes(String(result.value).toLowerCase())) {
                     radio.checked = true;
@@ -428,7 +504,7 @@ function smartFillField(
 
         // Handle checkbox groups
         if (metadata.element_type === 'checkbox' && metadata.group_name && Array.isArray(result.value)) {
-            const checkboxes = form.querySelectorAll(`input[type="checkbox"][name="${metadata.group_name}"]`);
+            const checkboxes = form.querySelectorAll(`input[type="checkbox"][name="${CSS.escape(metadata.group_name)}"]`);
             let filled = false;
             for (const cb of Array.from(checkboxes) as HTMLInputElement[]) {
                 const shouldCheck = (result.value as string[]).includes(cb.value);
@@ -444,25 +520,50 @@ function smartFillField(
             return filled;
         }
 
+        // Find the element using metadata (more reliable than index)
+        let element = findElementByMetadata(form, metadata);
+
+        if (element) {
+            console.log(`[Simplify-for-India] Found element for ${result.field_id} by metadata (id: ${metadata.id}, name: ${metadata.name})`);
+        }
+
+        // Fallback to index-based lookup if metadata search fails
+        if (!element) {
+            const fieldIndex = parseInt(result.field_id.replace('field_', ''));
+            element = elements[fieldIndex];
+            if (element) {
+                console.log(`[Simplify-for-India] Found element for ${result.field_id} by index ${fieldIndex}: ${element.name || element.id} [${element.type}]`);
+            }
+        }
+
+        if (!element) {
+            console.warn(`[Simplify-for-India] Element not found for ${result.field_id} (label: ${metadata.label}, id: ${metadata.id}, name: ${metadata.name})`);
+            return false;
+        }
+
+        // Final verification: Log what we're about to fill
+        console.log(`[Simplify-for-India] Filling ${result.field_id} → element: ${element.name || element.id || element.placeholder} [${element.type || element.tagName}] with value: "${result.value}"`);
+
+        // Validate element matches metadata to catch mismatches
+        const actualType = (element as HTMLInputElement).type || element.tagName.toLowerCase();
+        const expectedType = metadata.input_type || metadata.tagName?.toLowerCase();
+
+        if (actualType !== expectedType && expectedType) {
+            console.warn(`[Simplify-for-India] Field type mismatch for ${result.field_id}: expected ${expectedType}, found ${actualType}. Field: ${metadata.label || metadata.name}`);
+            // Continue anyway but log the warning - might still work
+        }
+
         // Handle single checkbox
         if (metadata.element_type === 'checkbox' || metadata.input_type === 'checkbox') {
-            const element = Array.from(elements)[fieldIndex] as HTMLInputElement;
-            if (element && element.type === 'checkbox') {
+            if (element && (element as HTMLInputElement).type === 'checkbox') {
                 const shouldCheck = result.value === true || result.value === 'true' || result.value === '1';
-                if (element.checked !== shouldCheck) {
-                    element.checked = shouldCheck;
+                if ((element as HTMLInputElement).checked !== shouldCheck) {
+                    (element as HTMLInputElement).checked = shouldCheck;
                     element.dispatchEvent(new Event('change', { bubbles: true }));
                     console.log(`[Simplify-for-India] Set checkbox: ${shouldCheck} (${result.reasoning})`);
                     return true;
                 }
             }
-            return false;
-        }
-
-        // Get the element for regular fields
-        const element = Array.from(elements)[fieldIndex] as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-        if (!element) {
-            console.warn(`[Simplify-for-India] Element not found for ${result.field_id}`);
             return false;
         }
 
@@ -601,6 +702,12 @@ async function autofillForm(form: HTMLFormElement | HTMLElement) {
 
     showNotification('🤖 AI Agent analyzing form...', 'info');
 
+    console.log('[Simplify-for-India] Sending field metadata to agent:', fieldsMetadata);
+    console.log('[Simplify-for-India] Field ID mapping:');
+    fieldsMetadata.forEach((field: any) => {
+        console.log(`  ${field.field_id}: ${field.label || field.name || field.placeholder} [${field.input_type}]`);
+    });
+
     try {
         // Call AI Agent endpoint
         const result = await chrome.storage.local.get(['access_token']);
@@ -626,14 +733,25 @@ async function autofillForm(form: HTMLFormElement | HTMLElement) {
         const results = data.results || [];
 
         console.log('[Simplify-for-India] Agent results:', results.length, 'fields');
+        console.log('[Simplify-for-India] Agent response details:', results);
 
         if (results.length === 0) {
             showNotification('❌ No fields could be filled', 'error');
             return;
         }
 
-        // Get all form elements
-        const elements = form.querySelectorAll('input, select, textarea');
+        // Get filtered form elements (same filtering as metadata collection)
+        const elements = getFilteredFormElements(form);
+
+        console.log('[Simplify-for-India] Filtered elements count:', elements.length);
+        console.log('[Simplify-for-India] Field metadata count:', fieldsMetadata.length);
+
+        if (elements.length !== fieldsMetadata.length) {
+            console.warn('[Simplify-for-India] ⚠️ MISMATCH: Filtered elements count does not match metadata count!');
+            console.warn('[Simplify-for-India] This may cause fields to be mapped incorrectly');
+        } else {
+            console.log('[Simplify-for-India] ✓ Element count matches metadata count');
+        }
 
         // Fill fields based on agent results
         let filledCount = 0;
@@ -688,7 +806,7 @@ async function autofillForm(form: HTMLFormElement | HTMLElement) {
                 if (autofillOptions.dryRun) {
                     // Preview mode - just highlight
                     const fieldIndex = parseInt(result.field_id.replace('field_', ''));
-                    const element = Array.from(elements)[fieldIndex] as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+                    const element = elements[fieldIndex];
                     if (element && result.action !== 'skip') {
                         highlightField(element, result.value);
                         filledCount++;
@@ -700,8 +818,10 @@ async function autofillForm(form: HTMLFormElement | HTMLElement) {
                 const filled = smartFillField(form, result, elements, fieldsMetadata);
                 if (filled) {
                     filledCount++;
+                    console.log(`[Simplify-for-India] ✓ Filled ${result.field_id}: ${result.value}`);
                 } else {
                     skippedCount++;
+                    console.warn(`[Simplify-for-India] ✗ Failed to fill ${result.field_id}: ${result.value} (${result.reasoning})`);
                 }
 
             } catch (fieldError) {

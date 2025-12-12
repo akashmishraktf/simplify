@@ -9,7 +9,11 @@
         "scripting"
     ],
     "action": {
-        "default_popup": "index.html"
+        "default_title": "Simplify for India"
+    },
+    "background": {
+        "service_worker": "assets/background.js",
+        "type": "module"
     },
     "content_scripts": [
         {

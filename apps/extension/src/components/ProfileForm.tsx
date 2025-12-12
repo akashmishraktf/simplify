@@ -3,6 +3,8 @@ import { updateProfile } from '../utils/api';
 import EmploymentForm from './EmploymentForm';
 import EducationForm from './EducationForm';
 
+declare const chrome: any;
+
 const defaultEnabledFields = {
     firstName: true,
     lastName: true,
@@ -221,24 +223,34 @@ const ProfileForm = ({ profile, onUpdate }) => {
 
     const inputStyle = {
         width: '100%',
-        padding: '6px',
-        marginBottom: '8px',
+        padding: '10px 12px',
+        marginBottom: '10px',
         boxSizing: 'border-box' as const,
-        fontSize: '12px',
+        fontSize: '13px',
+        borderRadius: '10px',
+        border: '1px solid #e2e8f0',
+        background: '#f8fafc',
     };
 
     const labelStyle = {
         display: 'block',
-        fontSize: '11px',
+        fontSize: '12px',
         fontWeight: 'bold' as const,
-        marginBottom: '3px',
-        marginTop: '5px',
+        marginBottom: '5px',
+        marginTop: '6px',
+        color: '#0f172a',
     };
 
     return (
-        <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '5px' }}>
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Your Profile</h3>
-            <form onSubmit={handleSubmit}>
+        <div style={{ padding: '8px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <div style={{ marginBottom: '10px' }}>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', color: '#0f172a' }}>Your profile</h3>
+                <p style={{ margin: 0, fontSize: '12px', color: '#475569' }}>
+                    Keep this in sync—autofill pulls directly from here.
+                </p>
+            </div>
+            <div style={{ maxHeight: '65vh', overflowY: 'auto', paddingRight: '4px' }}>
+                <form onSubmit={handleSubmit}>
                 <label style={labelStyle}>First Name</label>
                 <input
                     type="text"
@@ -625,13 +637,16 @@ const ProfileForm = ({ profile, onUpdate }) => {
                     disabled={saving}
                     style={{
                         width: '100%',
-                        padding: '8px',
+                        padding: '12px',
                         marginTop: '10px',
-                        backgroundColor: saving ? '#ccc' : '#0066cc',
+                        background: saving ? '#cbd5e1' : 'linear-gradient(135deg, #4f46e5, #6366f1)',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '4px',
+                        borderRadius: '12px',
                         cursor: saving ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        boxShadow: saving ? 'none' : '0 10px 24px rgba(79,70,229,0.25)',
                     }}
                 >
                     {saving ? 'Saving...' : 'Save Profile'}
@@ -648,6 +663,7 @@ const ProfileForm = ({ profile, onUpdate }) => {
                     {message}
                 </p>
             )}
+            </div>
         </div>
     );
 };
