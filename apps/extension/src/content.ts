@@ -1,4 +1,17 @@
-import { mapFormFields, fillField, calculateTotalExperience, getAllFillableElements, getComputedLabel, detectFieldType, FormField } from './utils/fieldMapper';
+import {
+    mapFormFields,
+    fillField,
+    calculateTotalExperience,
+    getAllFillableElements,
+    getComputedLabel,
+    detectFieldType,
+    FormField,
+    generateFormSignature,
+    getCachedMapping,
+    saveCachedMapping,
+    fillFormWithRules,
+    getProfileValueForFieldType
+} from './utils/fieldMapper';
 
 console.log('[Simplify-for-India] Content script loaded');
 
@@ -103,41 +116,109 @@ function highlightField(element: HTMLInputElement | HTMLSelectElement | HTMLText
 }
 
 function createAutofillButton(form: HTMLFormElement | HTMLElement): HTMLElement {
+    const container = document.createElement('div');
+    container.className = 'simplify-india-autofill-btn';
+
+    // Create main button
     const button = document.createElement('div');
-    button.className = 'simplify-india-autofill-btn';
-    button.innerHTML = `
-        <div style="
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            cursor: pointer;
-            z-index: 999999;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 11l3 3L22 4"></path>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-            </svg>
-            <span>Autofill with Simplify</span>
-        </div>
+    button.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 14px 24px;
+        border-radius: 50px;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+        cursor: pointer;
+        z-index: 999999;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        user-select: none;
+        border: none;
+        animation: slideIn 0.4s ease-out;
     `;
 
+    button.innerHTML = `
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+        </svg>
+        <span style="letter-spacing: 0.3px;">Autofill with Simplify</span>
+    `;
+
+    // Add keyframes for animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+            }
+            50% {
+                box-shadow: 0 4px 30px rgba(102, 126, 234, 0.6);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Hover effects
+    button.addEventListener('mouseenter', () => {
+        button.style.transform = 'translateY(-3px) scale(1.02)';
+        button.style.boxShadow = '0 8px 30px rgba(102, 126, 234, 0.5)';
+    });
+
+    button.addEventListener('mouseleave', () => {
+        button.style.transform = 'translateY(0) scale(1)';
+        button.style.boxShadow = '0 4px 20px rgba(102, 126, 234, 0.4)';
+    });
+
+    // Click effect
+    button.addEventListener('mousedown', () => {
+        button.style.transform = 'translateY(-1px) scale(0.98)';
+    });
+
+    button.addEventListener('mouseup', () => {
+        button.style.transform = 'translateY(-3px) scale(1.02)';
+    });
+
     button.addEventListener('click', () => {
+        // Add loading state
+        button.innerHTML = `
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;">
+                <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+            </svg>
+            <span style="letter-spacing: 0.3px;">Processing...</span>
+        `;
+
+        // Add spin animation
+        const spinStyle = document.createElement('style');
+        spinStyle.textContent = `
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(spinStyle);
+
         autofillForm(form);
     });
 
-    return button;
+    container.appendChild(button);
+    return container;
 }
 
 // Prepare metadata for the backend agent using the advanced FieldMapper
@@ -245,13 +326,185 @@ async function autofillForm(form: HTMLFormElement | HTMLElement) {
     }
 
     const fieldsMetadata = getFormFieldsMetadata(form);
-    
+
     if (fieldsMetadata.length === 0) {
         showNotification('No fillable fields found', 'info');
         return;
     }
 
-    showNotification('🤖 AI Agent analyzing form...', 'info');
+    // ========================================================================
+    // HYBRID AUTOFILL STRATEGY
+    // 1. Check cache (instant)
+    // 2. Try rule-based matching (fast, <100ms)
+    // 3. Fill known fields immediately
+    // 4. Use LLM for unknown fields (optional, async)
+    // ========================================================================
+
+    const formSignature = generateFormSignature(fieldsMetadata);
+    const url = window.location.href;
+
+    // Step 1: Try cache first
+    const cachedMappings = await getCachedMapping(formSignature, url);
+    let results: any[] = [];
+
+    if (cachedMappings && cachedMappings.length > 0) {
+        // Cache hit! Use cached mappings
+        console.log('[Autofill] Using cached mappings');
+        showNotification('⚡ Using cached mappings...', 'info');
+
+        results = cachedMappings.map((mapping: any) => ({
+            field_id: mapping.fieldId,
+            action: 'fill',
+            value: getProfileValueForFieldType(mapping.fieldType, currentProfile),
+            confidence: mapping.confidence,
+            reasoning: `Cached: ${mapping.fieldType}`,
+            source: 'cache',
+        }));
+    } else {
+        // Step 2: Use rule-based matching
+        console.log('[Autofill] Using rule-based matching');
+        showNotification('🔍 Smart autofill analyzing form...', 'info');
+
+        results = fillFormWithRules(fieldsMetadata, currentProfile);
+    }
+
+    // Filter out fields that couldn't be filled by rules
+    const filledResults = results.filter(r => r.action === 'fill');
+    const unknownFields = results.filter(r => r.needsAI === true);
+
+    // Step 3: Execute field filling immediately (for known fields)
+    const elements = getAllFillableElements(form.shadowRoot ? form.shadowRoot : form);
+    let filledCount = 0;
+    let previewCount = 0;
+
+    for (const res of filledResults) {
+        if (res.action === 'skip' || !res.value) continue;
+
+        const idx = parseInt(res.field_id.replace('field_', ''));
+        const element = elements[idx];
+
+        if (element) {
+            if (autofillOptions.dryRun) {
+                highlightField(element, res.value);
+                previewCount++;
+            } else {
+                await fillField(element, res.value);
+                filledCount++;
+
+                // Show progress
+                if (filledCount % 5 === 0) {
+                    updateProgressNotification(filledCount, filledResults.length);
+                }
+            }
+        }
+    }
+
+    // Show completion message
+    if (autofillOptions.dryRun) {
+        showNotification(`✓ Preview: ${previewCount} fields`, 'success');
+    } else {
+        showNotification(`✓ Filled ${filledCount} fields instantly!`, 'success');
+
+        // Save to cache for next time (only if not from cache)
+        if (!cachedMappings) {
+            const mappingsToCache = results
+                .filter(r => r.action === 'fill')
+                .map(r => {
+                    // Extract field type from reasoning
+                    const fieldType = r.reasoning?.replace('Rule-based match: ', '') || 'unknown';
+                    return {
+                        fieldId: r.field_id,
+                        fieldType: fieldType,
+                        confidence: r.confidence || 0.9,
+                    };
+                });
+
+            if (mappingsToCache.length > 0) {
+                await saveCachedMapping(formSignature, url, mappingsToCache);
+            }
+        }
+
+        if (filledCount > 0) trackApplication(form);
+    }
+
+    // Step 4: Optional AI enhancement for unknown fields (background)
+    if (unknownFields.length > 0 && !autofillOptions.dryRun) {
+        console.log(`[Autofill] ${unknownFields.length} unknown fields - considering AI enhancement`);
+        // Show option to use AI
+        showAIEnhancementOption(form, unknownFields, fieldsMetadata);
+    }
+}
+
+// Progress notification
+function updateProgressNotification(current: number, total: number) {
+    const notification = document.querySelector('[data-simplify-progress]') as HTMLElement;
+    if (notification) {
+        notification.textContent = `Filling field ${current} of ${total}...`;
+    } else {
+        const notif = document.createElement('div');
+        notif.setAttribute('data-simplify-progress', '1');
+        notif.style.cssText = `
+            position: fixed; top: 80px; right: 20px;
+            background: #2196F3; color: white; padding: 12px 20px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 2147483647;
+            font-family: system-ui, sans-serif; font-size: 14px;
+        `;
+        notif.textContent = `Filling field ${current} of ${total}...`;
+        document.body.appendChild(notif);
+        setTimeout(() => notif.remove(), 2000);
+    }
+}
+
+// Show AI enhancement option for unknown fields
+function showAIEnhancementOption(
+    form: HTMLFormElement | HTMLElement,
+    unknownFields: any[],
+    fieldsMetadata: any[]
+) {
+    // Create floating button for AI enhancement
+    const enhanceBtn = document.createElement('div');
+    enhanceBtn.style.cssText = `
+        position: fixed; bottom: 20px; right: 20px;
+        background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+        color: white; padding: 12px 20px; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 2147483646;
+        font-family: system-ui, sans-serif; font-size: 14px; font-weight: 600;
+        cursor: pointer; display: flex; align-items: center; gap: 8px;
+        transition: transform 0.2s;
+    `;
+    enhanceBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M8 12h8M12 8v8"></path>
+        </svg>
+        <span>Fill ${unknownFields.length} more with AI?</span>
+    `;
+
+    enhanceBtn.addEventListener('mouseenter', () => {
+        enhanceBtn.style.transform = 'translateY(-2px)';
+    });
+    enhanceBtn.addEventListener('mouseleave', () => {
+        enhanceBtn.style.transform = 'translateY(0)';
+    });
+
+    enhanceBtn.addEventListener('click', async () => {
+        enhanceBtn.remove();
+        await fillUnknownFieldsWithAI(form, unknownFields, fieldsMetadata);
+    });
+
+    document.body.appendChild(enhanceBtn);
+
+    // Auto-remove after 10 seconds
+    setTimeout(() => enhanceBtn.remove(), 10000);
+}
+
+// Fill unknown fields using AI
+async function fillUnknownFieldsWithAI(
+    form: HTMLFormElement | HTMLElement,
+    unknownFields: any[],
+    fieldsMetadata: any[]
+) {
+    showNotification('🤖 AI analyzing remaining fields...', 'info');
 
     try {
         const result = await chrome.storage.local.get(['access_token', 'gemini_api_key']);
@@ -263,56 +516,57 @@ async function autofillForm(form: HTMLFormElement | HTMLElement) {
             headers['x-gemini-api-key'] = result.gemini_api_key;
         }
 
+        // Send only unknown fields to AI
+        const unknownFieldsMetadata = unknownFields.map(uf => {
+            const idx = parseInt(uf.field_id.replace('field_', ''));
+            return fieldsMetadata[idx];
+        });
+
         const response = await fetch('http://localhost:3000/v1/mapping/agent-fill', {
             method: 'POST',
             headers,
             body: JSON.stringify({
-                fields: fieldsMetadata,
+                fields: unknownFieldsMetadata,
                 url: window.location.href,
             }),
         });
 
-        if (!response.ok) throw new Error('Agent API failed');
+        if (!response.ok) throw new Error('AI API failed');
         const data = await response.json();
-        const results = data.results || [];
+        const aiResults = data.results || [];
 
-        if (results.length === 0) {
-            showNotification('❌ No fields could be filled', 'error');
-            return;
-        }
-
-        // Execution Phase
-        // We need to re-find elements because the metadata array index corresponds to the flat list from getAllFillableElements
+        // Fill AI results
         const elements = getAllFillableElements(form.shadowRoot ? form.shadowRoot : form);
-        let filledCount = 0;
+        let aiFilledCount = 0;
 
-        for (const res of results) {
+        for (const res of aiResults) {
             if (res.action === 'skip') continue;
 
-            const idx = parseInt(res.field_id.replace('field_', ''));
-            const element = elements[idx];
+            // Find original field index
+            const originalFieldId = unknownFields.find((uf, i) =>
+                `field_${i}` === res.field_id
+            )?.field_id;
 
-            if (element) {
-                if (autofillOptions.dryRun) {
-                    highlightField(element, res.value);
-                    filledCount++;
-                } else {
-                    fillField(element, res.value);
-                    filledCount++;
+            if (originalFieldId) {
+                const idx = parseInt(originalFieldId.replace('field_', ''));
+                const element = elements[idx];
+
+                if (element && res.value) {
+                    await fillField(element, res.value);
+                    aiFilledCount++;
                 }
             }
         }
 
-        if (autofillOptions.dryRun) {
-            showNotification(`Previewed ${filledCount} fields`, 'info');
+        if (aiFilledCount > 0) {
+            showNotification(`✓ AI filled ${aiFilledCount} more fields!`, 'success');
         } else {
-            showNotification(`✓ Filled ${filledCount} fields!`, 'success');
-            if (filledCount > 0) trackApplication(form);
+            showNotification('AI could not fill remaining fields', 'info');
         }
 
     } catch (error) {
-        console.error('[Simplify-for-India] Autofill failed:', error);
-        showNotification('❌ Autofill failed', 'error');
+        console.error('[Autofill] AI enhancement failed:', error);
+        showNotification('AI enhancement unavailable', 'error');
     }
 }
 
