@@ -11,6 +11,7 @@ It consists of a **Chrome Extension** that detects job application forms and a *
 - **Smart Field Mapping**: Uses AI to understand non-standard field names (e.g., "Current Fixed CTC" vs "Annual Compensation").
 - **Application Tracking**: Automatically logs every application to a dashboard.
 - **Indian Market Focus**: Specifically tuned for Indian hiring norms (CTC, Notice Period, etc.).
+- **Bring Your Own Key (BYOK)**: Users can provide their own Gemini API key for higher rate limits and privacy.
 
 ---
 
@@ -55,8 +56,9 @@ This module interfaces with Google's Generative AI.
 - **Model**: `gemini-2.5-flash`
 - **Functionality**:
     1. Receives a list of form fields (ID, label, context) and the user's profile.
-    2. Constructs a prompt instructing the AI to act as an autofill agent.
-    3. Returns a JSON action plan (`fill`, `select`, `check`, `skip`) for each field.
+    2. Checks for a **user-provided API key** in the request headers (`x-gemini-api-key`). If present, it uses that key for the session.
+    3. Constructs a prompt instructing the AI to act as an autofill agent.
+    4. Returns a JSON action plan (`fill`, `select`, `check`, `skip`) for each field.
 - **Smart Features**:
     - **EEOC Defaults**: Automatically handles sensitive demographic questions (Gender, Race, Veteran status) with "Prefer not to say" or smart defaults if data is missing.
     - **Fuzzy Matching**: Uses Levenshtein-like logic to match profile values to dropdown options (e.g., "Bangalore" -> "Bengaluru").
@@ -87,28 +89,27 @@ Located in `apps/extension`, built with Manifest V3.
 
 ### Core Components
 
-#### A. Content Script (`src/content.ts`)
-The workhorse that interacts with the web page.
+#### A. Content Script ("Super Scraper" Engine)
+The workhorse that interacts with the web page (`src/content.ts`, `src/utils/fieldMapper.ts`).
+- **Deep DOM Analysis**:
+    - **Shadow DOM**: Recursively pierces `shadowRoot` to find fields in modern Web Components.
+    - **iFrames**: Runs in `all_frames` to detect embedded forms (common in enterprise ATS).
+    - **Accessibility Tree**: Uses advanced logic (`getComputedLabel`) to find labels via `aria-label`, `aria-labelledby`, placeholder, and nearby text nodes.
 - **Form Detection**:
-    - Scans DOM for `<form>` tags.
-    - Also detects "Virtual Forms" (`<div>` containers used in SPAs like React/Angular apps).
-    - **Scoring Algorithm**: specific keywords ("Resume", "CTC", "Notice Period") boost a form's score to identify the *real* job application form amidst search bars and login forms.
+    - Scans DOM for `<form>` tags and "Virtual Forms" (SPA containers).
+    - **Scoring Algorithm**: specific keywords ("Resume", "CTC", "Notice Period") boost a form's score.
 - **Interaction**:
     - Injects a floating **"Autofill with Simplify"** button.
-    - Scrapes comprehensive metadata: Labels, Placeholders, Aria-labels, Surrounding text.
-    - **Execution**: Receives the "Action Plan" from the backend and triggers native DOM events (`input`, `change`, `blur`) and React synthetic events to ensure data binding works.
+    - **Execution**:
+        - **React Support**: Uses native value setters to bypass React/Angular controlled input restrictions.
+        - **Combobox Handling**: Simulates full keyboard sequences (type -> wait -> Enter) to trigger dropdown searches.
+        - **Event Simulation**: Dispatches comprehensive event chains (`focus`, `click`, `input`, `change`, `blur`) to ensure validity.
 
-#### B. Popup UI (`src/popup.tsx`)
-A clean React interface for:
-- Logging in.
-- Viewing the "Applications" dashboard.
-- Quick profile edits.
-
-#### C. Field Mapper (`src/utils/fieldMapper.ts`)
-Client-side heuristics for detecting field types. Used for:
-- Preliminary analysis.
-- Fallback if the backend is unreachable.
-- Generating page signatures for caching.
+#### B. UI/UX (`src/components/`)
+A completely refreshed React interface:
+- **Dashboard**: Gradient header, modern card layout, and tabbed navigation.
+- **Settings**: New tab to securely save your personal **Gemini API Key**.
+- **Profile**: Clean, collapsible sections for demographics and advanced options.
 
 ---
 
@@ -162,20 +163,30 @@ The `user_profiles` table is extensive to cover diverse application forms:
 ### Prerequisites
 - Node.js v16+
 - PostgreSQL
-- Google Gemini API Key
+- Docker (optional, for easy DB setup)
 
 ### Installation
 1.  **Clone**: `git clone <repo>`
 2.  **Install**: `npm install`
-3.  **Database**: Create Postgres DB `simplify_india`.
-4.  **Env**: Configure `apps/backend/.env` (DB URL, JWT Secret, Gemini Key).
+3.  **Database**:
+    - Run `docker run --name simplify-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres`
+    - Create DB: `docker exec -it simplify-postgres psql -U postgres -c "CREATE DATABASE simplify_india;"`
+4.  **Env**: Configure `apps/backend/.env`.
 5.  **Build**: `npm run build`
 
 ### Running
 - **Backend**: `npm run start:dev -w apps/backend` (Port 3000)
 - **Extension**: `npm run dev -w apps/extension` (Vite Dev Server) -> Load `dist` folder in Chrome.
 
+### Using "Bring Your Own Key" (BYOK)
+1.  Get a free API key from [Google AI Studio](https://aistudio.google.com/).
+2.  Open the extension popup.
+3.  Go to the **Settings** tab.
+4.  Paste your key and click **Save**.
+5.  All future autofill requests will use your key, bypassing shared rate limits.
+
 ### Debugging
 The extension exposes a global debug object in the browser console:
 - `window.__simplifyDebug.detectForms()`: Force re-scan of the page.
 - `window.__simplifyDebug.scoreAllForms()`: See why a form was/wasn't detected.
+- `window.__simplifyDebug.findVirtualForms()`: List detected "virtual" form containers.

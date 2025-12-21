@@ -223,33 +223,42 @@ const ProfileForm = ({ profile, onUpdate }) => {
 
     const inputStyle = {
         width: '100%',
-        padding: '10px 12px',
-        marginBottom: '10px',
+        padding: '12px 14px',
+        marginBottom: '14px',
         boxSizing: 'border-box' as const,
-        fontSize: '13px',
+        fontSize: '14px',
         borderRadius: '10px',
         border: '1px solid #e2e8f0',
         background: '#f8fafc',
+        transition: 'all 0.2s',
+        outline: 'none',
     };
 
     const labelStyle = {
         display: 'block',
-        fontSize: '12px',
-        fontWeight: 'bold' as const,
-        marginBottom: '5px',
-        marginTop: '6px',
-        color: '#0f172a',
+        fontSize: '13px',
+        fontWeight: 600 as const,
+        marginBottom: '6px',
+        marginTop: '8px',
+        color: '#334155',
     };
 
     return (
-        <div style={{ padding: '8px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-            <div style={{ marginBottom: '10px' }}>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', color: '#0f172a' }}>Your profile</h3>
-                <p style={{ margin: 0, fontSize: '12px', color: '#475569' }}>
+        <div style={{ padding: '4px' }}>
+            <div style={{ 
+                marginBottom: '16px', 
+                background: '#fff', 
+                padding: '16px', 
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: '#0f172a' }}>Your profile</h3>
+                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
                     Keep this in sync—autofill pulls directly from here.
                 </p>
             </div>
-            <div style={{ maxHeight: '65vh', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '4px' }}>
                 <form onSubmit={handleSubmit}>
                 <label style={labelStyle}>First Name</label>
                 <input

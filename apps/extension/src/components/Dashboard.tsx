@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getProfile, logout } from '../utils/api';
 import ProfileForm from './ProfileForm';
 import ApplicationHistory from './ApplicationHistory';
+import Settings from './Settings';
 
 const Dashboard = ({ onLogout }) => {
     const [profile, setProfile] = useState(null);
@@ -28,62 +29,79 @@ const Dashboard = ({ onLogout }) => {
         onLogout();
     };
 
-    if (loading) return <div style={{ padding: '16px', color: '#475569' }}>Loading your workspace…</div>;
+    if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Loading your workspace…</div>;
 
     const tabStyle = (isActive) => ({
-        padding: '10px 14px',
+        flex: 1,
+        padding: '10px 6px',
         fontSize: '13px',
-        fontWeight: 700,
+        fontWeight: 600,
         cursor: 'pointer',
-        borderRadius: '10px',
-        border: '1px solid transparent',
-        background: isActive ? 'linear-gradient(135deg, #ede9fe, #e0e7ff)' : '#f8fafc',
-        color: isActive ? '#4338ca' : '#475569',
-        boxShadow: isActive ? '0 6px 12px rgba(67,56,202,0.12)' : 'none',
+        borderRadius: '8px',
+        border: 'none',
+        background: isActive ? '#ffffff' : 'transparent',
+        color: isActive ? '#4f46e5' : '#64748b',
+        boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
         transition: 'all 0.2s ease',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '6px'
     });
 
     return (
-        <div style={{ display: 'grid', gap: '12px' }}>
+        <div style={{ display: 'grid', gap: '20px' }}>
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '12px 14px',
-                borderRadius: '12px',
+                padding: '16px 20px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #ffffff, #f8fafc)',
                 border: '1px solid #e2e8f0',
-                background: '#f8fafc',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
             }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: 12, color: '#475569' }}>Signed in as</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
-                        {profile?.email || 'Unknown user'}
-                    </span>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{
+                        width: 40, height: 40, borderRadius: '50%', background: '#e0e7ff', color: '#4338ca',
+                        display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 16
+                    }}>
+                        {profile?.firstName?.[0] || profile?.email?.[0] || 'U'}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                            {profile?.firstName ? `Hi, ${profile.firstName}` : 'Welcome back'}
+                        </span>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>
+                            {profile?.email || 'Unknown user'}
+                        </span>
+                    </div>
                 </div>
                 <button
                     onClick={handleLogout}
                     style={{
-                        padding: '10px 12px',
+                        padding: '8px 16px',
                         fontSize: '12px',
                         cursor: 'pointer',
-                        background: '#0f172a',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '10px',
-                        fontWeight: 700,
+                        background: '#fff',
+                        color: '#ef4444',
+                        border: '1px solid #fee2e2',
+                        borderRadius: '8px',
+                        fontWeight: 600,
+                        transition: 'all 0.2s'
                     }}
+                    onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
+                    onMouseOut={(e) => e.currentTarget.style.background = '#fff'}
                 >
-                    Logout
+                    Sign out
                 </button>
             </div>
 
             <div style={{
                 display: 'flex',
-                gap: '10px',
-                padding: '8px',
-                background: '#f8fafc',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
+                padding: '4px',
+                background: '#f1f5f9',
+                borderRadius: '10px',
             }}>
                 <button
                     style={tabStyle(activeTab === 'profile')}
@@ -97,13 +115,24 @@ const Dashboard = ({ onLogout }) => {
                 >
                     Applications
                 </button>
+                <button
+                    style={tabStyle(activeTab === 'settings')}
+                    onClick={() => setActiveTab('settings')}
+                >
+                    Settings
+                </button>
             </div>
 
-            <div style={{ padding: '4px 0' }}>
-                {activeTab === 'profile' ? (
+            <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+                {activeTab === 'profile' && (
                     <ProfileForm profile={profile} onUpdate={fetchProfile} />
-                ) : (
+                )}
+                {activeTab === 'applications' && (
                     <ApplicationHistory />
+                )}
+                {activeTab === 'settings' && (
+                    <Settings />
                 )}
             </div>
         </div>

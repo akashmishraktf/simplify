@@ -7,9 +7,12 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-    const result = await chrome.storage.local.get(['access_token']);
+    const result = await chrome.storage.local.get(['access_token', 'gemini_api_key']);
     if (result.access_token) {
         config.headers.Authorization = `Bearer ${result.access_token}`;
+    }
+    if (result.gemini_api_key) {
+        config.headers['x-gemini-api-key'] = result.gemini_api_key;
     }
     return config;
 });

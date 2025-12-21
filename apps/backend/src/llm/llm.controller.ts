@@ -100,6 +100,7 @@ export class LLMController {
   async agentFill(@Request() req: any, @Body() payload: any) {
     const { fields, url } = payload;
     const user_id = req.user.userId;
+    const apiKey = req.headers['x-gemini-api-key'];
 
     // Get user profile
     const profile_data = await this.usersService.getProfile(user_id);
@@ -195,7 +196,7 @@ export class LLMController {
     console.log("[Agent] Processing form fill for:", url);
     console.log("[Agent] Fields count:", fields.length);
 
-    const results = await this.agentService.fillForm(fields, profile, url);
+    const results = await this.agentService.fillForm(fields, profile, url, apiKey);
 
     console.log("[Agent] Fill results:", results.length);
 

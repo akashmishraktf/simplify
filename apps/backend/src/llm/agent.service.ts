@@ -114,9 +114,23 @@ export class AgentService {
   async fillForm(
     fields: FormFieldContext[],
     profile: UserProfile,
-    page_url: string
+    page_url: string,
+    apiKey?: string
   ): Promise<AgentFillResult[]> {
-    if (!this.model) {
+    let modelToUse = this.model;
+
+    if (apiKey) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        modelToUse = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        console.log("[Agent] Using user-provided API key");
+      } catch (e) {
+        console.error("[Agent] Invalid user-provided API key:", e);
+        // Fallback to default model if exists, or heuristic
+      }
+    }
+
+    if (!modelToUse) {
       console.warn("[Agent] No LLM configured, using heuristic fallback");
       return this.heuristicFill(fields, profile);
     }
@@ -124,7 +138,7 @@ export class AgentService {
     const prompt = this.buildAgentPrompt(fields, profile, page_url);
 
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await modelToUse.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
 
