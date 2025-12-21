@@ -9,7 +9,6 @@
 
 import { fillField, getAllFillableElements } from './utils/fieldMapper';
 import { autofillWithHybridEngine, detectATS, fillFormWithATS } from './utils/atsEngine';
-import { fillWithModernStrategy } from './utils/modernFiller';
 
 console.log('[Simplify Pro] Hybrid ATS Engine v2.0 loaded - 48 ATS systems + AI fallback');
 
@@ -141,44 +140,20 @@ async function autofillFormHybrid(form: HTMLFormElement | HTMLElement) {
     const atsName = detectATS(url);
 
     if (atsName) {
-        console.log('[Simplify Pro] Detected ATS:', atsName);
+        // Use ATS-specific configuration
+        console.log('[Simplify Pro] Using ATS config:', atsName);
+        showNotification(`🚀 Filling with ${atsName} config...`, 'info');
 
-        // STRATEGY 1: Try modern CSS-based filling first (more reliable)
-        console.log('[Simplify Pro] Trying modern fill strategy...');
-        showNotification(`🚀 Filling ${atsName} form...`, 'info');
-
-        try {
-            const modernResult = await fillWithModernStrategy(currentProfile);
-
-            // If modern strategy filled most fields, we're done
-            if (modernResult.filledCount >= 3) {
-                console.log('[Simplify Pro] Modern strategy successful!');
-
-                // STRATEGY 2: Try legacy XPath configs for remaining fields
-                console.log('[Simplify Pro] Attempting legacy XPath for remaining fields...');
-                const legacyResult = await fillFormWithATS(atsName, currentProfile);
-
-                const totalFilled = modernResult.filledCount;
-                showNotification(`✓ Filled ${totalFilled} fields!`, 'success');
-                trackApplication();
-                return;
-            }
-        } catch (error) {
-            console.error('[Simplify Pro] Modern fill failed:', error);
-        }
-
-        // STRATEGY 3: Fall back to legacy XPath only
-        console.log('[Simplify Pro] Trying legacy XPath config...');
         try {
             const result = await fillFormWithATS(atsName, currentProfile);
 
             if (result.success && result.filledCount > 0) {
-                showNotification(`✓ Filled ${result.filledCount} fields!`, 'success');
+                showNotification(`✓ Filled ${result.filledCount}/${result.totalCount} fields!`, 'success');
                 trackApplication();
                 return;
             }
         } catch (error) {
-            console.error('[Simplify Pro] Legacy fill failed:', error);
+            console.error('[Simplify Pro] ATS fill failed:', error);
         }
     }
 
