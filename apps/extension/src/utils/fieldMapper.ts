@@ -875,28 +875,54 @@ export async function fillField(field: HTMLInputElement | HTMLSelectElement | HT
         // Handle Select Elements
         if (field instanceof HTMLSelectElement) {
             const options = Array.from(field.options);
-            let matched = options.find(opt => opt.value === String(value));
-            
-            // Try text match (exact)
-            if (!matched) matched = options.find(opt => opt.text.toLowerCase() === String(value).toLowerCase());
-            
-            // Try fuzzy match
-            if (!matched) matched = options.find(opt => opt.text.toLowerCase().includes(String(value).toLowerCase()));
-            
+            const strValue = String(value);
+            let matched = options.find(opt => opt.value === strValue);
+
+            // Try text match (exact, case-insensitive)
+            if (!matched) matched = options.find(opt => opt.text.toLowerCase() === strValue.toLowerCase());
+
+            // Try partial text match
+            if (!matched) matched = options.find(opt => opt.text.toLowerCase().includes(strValue.toLowerCase()));
+
+            // Try partial value match
+            if (!matched) matched = options.find(opt => strValue.toLowerCase().includes(opt.text.toLowerCase()) && opt.value);
+
             if (matched) {
-                field.value = matched.value;
+                // Use native setter for React compatibility
+                const nativeSelectSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLSelectElement.prototype, 'value'
+                )?.set;
+                if (nativeSelectSetter) {
+                    nativeSelectSetter.call(field, matched.value);
+                } else {
+                    field.value = matched.value;
+                }
                 field.dispatchEvent(new Event('change', { bubbles: true }));
                 field.dispatchEvent(new Event('input', { bubbles: true }));
             }
             return;
         }
 
-        // Handle Radio Buttons
+        // Handle Radio Buttons - find the correct radio in the group
         if (field.type === 'radio') {
-            if (field.value === String(value) || (field.parentElement?.textContent?.trim().toLowerCase() === String(value).toLowerCase())) {
-                field.checked = true;
-                field.dispatchEvent(new Event('change', { bubbles: true }));
-                field.click();
+            const groupName = field.name;
+            const radios = groupName
+                ? Array.from(document.querySelectorAll(`input[type="radio"][name="${CSS.escape(groupName)}"]`)) as HTMLInputElement[]
+                : [field as HTMLInputElement];
+
+            const strValue = String(value).toLowerCase();
+            let matched = radios.find(r => r.value.toLowerCase() === strValue);
+            // Try matching by label text
+            if (!matched) {
+                matched = radios.find(r => {
+                    const label = r.parentElement?.textContent?.trim().toLowerCase() || '';
+                    return label === strValue || label.includes(strValue);
+                });
+            }
+            if (matched) {
+                matched.checked = true;
+                matched.dispatchEvent(new Event('change', { bubbles: true }));
+                matched.click();
             }
             return;
         }
@@ -935,7 +961,8 @@ export async function fillField(field: HTMLInputElement | HTMLSelectElement | HT
             field.value = valueToSet;
         }
 
-        // Dispatch comprehensive event sequence
+        // Dispatch comprehensive event sequence for React/Angular/Vue compatibility
+        field.dispatchEvent(new InputEvent('input', { bubbles: true, data: valueToSet, inputType: 'insertText' }));
         field.dispatchEvent(new Event('input', { bubbles: true }));
         field.dispatchEvent(new Event('change', { bubbles: true }));
         
@@ -1166,8 +1193,8 @@ export function getProfileValueForFieldType(fieldType: string, profile: any): an
         relevantExperience: profile.relevantExperience || profile.totalExperience,
 
         // Availability
-        noticePeriod: profile.noticePeriod,
-        availableFrom: profile.availableFrom,
+        noticePeriod: profile.noticePeriod || (profile.noticePeriodDays != null ? `${profile.noticePeriodDays} days` : undefined),
+        availableFrom: profile.availableFrom || profile.availabilityDate,
 
         // Preferences
         willingToRelocate: profile.willingToRelocate ? 'Yes' : 'No',
@@ -1180,7 +1207,9 @@ export function getProfileValueForFieldType(fieldType: string, profile: any): an
         primarySkills: profile.primarySkills,
         secondarySkills: profile.secondarySkills,
         certifications: profile.certifications,
-        languages: Array.isArray(profile.languages) ? profile.languages.join(', ') : profile.languages,
+        languages: Array.isArray(profile.languages)
+            ? profile.languages.map((l: any) => typeof l === 'string' ? l : l.language).join(', ')
+            : profile.languages,
         education: profile.education?.[0]?.degree || profile.highestQualification,
         degree: profile.education?.[0]?.degree,
         fieldOfStudy: profile.education?.[0]?.fieldOfStudy,
@@ -1203,13 +1232,13 @@ export function getProfileValueForFieldType(fieldType: string, profile: any): an
         dateOfBirth: profile.dateOfBirth,
         nationality: profile.nationality,
         ethnicity: profile.ethnicity,
-        disability: profile.disability,
-        veteran: profile.veteran,
+        disability: profile.disability || profile.disabilityStatus,
+        veteran: profile.veteran || profile.veteranStatus,
 
         // Work Authorization
         workAuthorization: profile.workAuthorization,
         visaStatus: profile.visaStatus,
-        requireSponsorship: profile.requireSponsorship ? 'Yes' : 'No',
+        requireSponsorship: (profile.requireSponsorship || profile.requiresSponsorship) ? 'Yes' : 'No',
 
         // References
         referenceName: profile.references?.[0]?.name,

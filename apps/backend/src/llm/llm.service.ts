@@ -135,16 +135,30 @@ Return ONLY valid JSON array (no markdown, no extra text):
 
   private parseJSONResponse(text: string): FieldMapping[] {
     try {
-      // Remove markdown code blocks if present
       let cleanText = text.trim();
-      if (cleanText.startsWith("```")) {
-        cleanText = cleanText.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+
+      // Remove markdown code blocks (various formats LLMs return)
+      cleanText = cleanText
+        .replace(/^```(?:json|JSON)?\s*\n?/gm, "")
+        .replace(/\n?```\s*$/gm, "");
+      cleanText = cleanText.trim();
+
+      // Try to extract JSON array if there's surrounding text
+      if (!cleanText.startsWith("[")) {
+        const arrayMatch = cleanText.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          cleanText = arrayMatch[0];
+        }
       }
 
       const mappings = JSON.parse(cleanText);
+      if (!Array.isArray(mappings)) {
+        console.error("[LLM] Response is not an array:", typeof mappings);
+        return [];
+      }
       return mappings;
     } catch (error) {
-      console.error("[LLM] Failed to parse JSON:", text);
+      console.error("[LLM] Failed to parse JSON:", text.substring(0, 500));
       return [];
     }
   }

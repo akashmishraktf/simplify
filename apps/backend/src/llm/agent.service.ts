@@ -395,17 +395,29 @@ Return ONLY a valid JSON array (no markdown, no explanation):
   private parseAgentResponse(text: string): AgentFillResult[] {
     try {
       let clean_text = text.trim();
-      // Remove markdown code blocks
-      if (clean_text.startsWith("```")) {
-        clean_text = clean_text
-          .replace(/```json\n?/g, "")
-          .replace(/```\n?/g, "");
+
+      // Remove markdown code blocks (various formats LLMs return)
+      clean_text = clean_text
+        .replace(/^```(?:json|JSON)?\s*\n?/gm, "")
+        .replace(/\n?```\s*$/gm, "");
+      clean_text = clean_text.trim();
+
+      // Try to extract JSON array if there's surrounding text
+      if (!clean_text.startsWith("[")) {
+        const arrayMatch = clean_text.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          clean_text = arrayMatch[0];
+        }
       }
 
       const results = JSON.parse(clean_text);
+      if (!Array.isArray(results)) {
+        console.error("[Agent] Response is not an array:", typeof results);
+        return [];
+      }
       return results;
     } catch (error) {
-      console.error("[Agent] Failed to parse response:", text);
+      console.error("[Agent] Failed to parse response:", text.substring(0, 500));
       return [];
     }
   }
@@ -993,10 +1005,19 @@ Return ONLY valid JSON (no markdown, no extra text):
   } {
     try {
       let clean_text = text.trim();
-      if (clean_text.startsWith("```")) {
-        clean_text = clean_text
-          .replace(/```json\n?/g, "")
-          .replace(/```\n?/g, "");
+
+      // Remove markdown code blocks (various formats LLMs return)
+      clean_text = clean_text
+        .replace(/^```(?:json|JSON)?\s*\n?/gm, "")
+        .replace(/\n?```\s*$/gm, "");
+      clean_text = clean_text.trim();
+
+      // Try to extract JSON object if there's surrounding text
+      if (!clean_text.startsWith("{")) {
+        const objMatch = clean_text.match(/\{[\s\S]*\}/);
+        if (objMatch) {
+          clean_text = objMatch[0];
+        }
       }
 
       const parsed = JSON.parse(clean_text);
@@ -1006,9 +1027,12 @@ Return ONLY valid JSON (no markdown, no extra text):
         reasoning: parsed.reasoning || "",
       };
     } catch (error) {
-      console.error("[Agent] Failed to parse custom answer response:", text);
+      console.error("[Agent] Failed to parse custom answer response:", text.substring(0, 500));
       // Try to extract answer from raw text
-      const raw_text = text.trim();
+      const raw_text = text.trim()
+        .replace(/^```(?:json|JSON)?\s*\n?/gm, "")
+        .replace(/\n?```\s*$/gm, "")
+        .trim();
       if (raw_text.length > 10 && raw_text.length < 5000) {
         return {
           answer: raw_text,

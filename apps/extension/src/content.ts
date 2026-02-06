@@ -85,7 +85,7 @@ async function loadProfile() {
     try {
         const result = await chrome.storage.local.get(['access_token']);
         if (!result.access_token) {
-            console.log('[Simplify-for-India] No access token found');
+            console.warn('[Simplify-for-India] No access token found - user not logged in');
             return null;
         }
 
@@ -97,13 +97,21 @@ async function loadProfile() {
 
         if (response.ok) {
             currentProfile = await response.json();
-            console.log('[Simplify-for-India] Profile loaded:', currentProfile);
+            console.log('[Simplify-for-India] Profile loaded successfully');
             return currentProfile;
+        } else if (response.status === 401) {
+            console.warn('[Simplify-for-India] Access token expired or invalid');
+            // Clear stale token so user gets re-prompted
+            await chrome.storage.local.remove(['access_token']);
+            return null;
+        } else {
+            console.error(`[Simplify-for-India] Profile load failed with status ${response.status}`);
+            return null;
         }
     } catch (err) {
-        console.error('[Simplify-for-India] Failed to load profile:', err);
+        console.error('[Simplify-for-India] Failed to load profile (network error):', err);
+        return null;
     }
-    return null;
 }
 
 async function loadAutofillOptions(): Promise<AutofillOptions> {
@@ -295,7 +303,6 @@ async function handleCustomQuestions(
     unknownFields: any[],
     fieldsMetadata: any[]
 ) {
-    const elements = getAllFillableElements(form.shadowRoot ? form.shadowRoot : form);
     const headers = await getAuthHeaders();
     const job_description = scrapeJobDescription();
 
@@ -308,7 +315,7 @@ async function handleCustomQuestions(
         const meta = fieldsMetadata[idx];
 
         if (isCustomQuestion(meta)) {
-            custom_questions.push({ ...uf, meta, idx });
+            custom_questions.push({ ...uf, meta, fieldId: uf.field_id });
         } else {
             standard_unknowns.push(uf);
         }
@@ -324,7 +331,7 @@ async function handleCustomQuestions(
         showNotification(`Found ${custom_questions.length} custom question(s) - generating answers...`, 'info');
 
         for (const cq of custom_questions) {
-            const element = elements[cq.idx];
+            const element = fieldElementMap.get(cq.fieldId);
             if (!element) continue;
 
             const question_text = cq.meta.label || cq.meta.surrounding_text || cq.meta.placeholder || '';
@@ -558,20 +565,25 @@ function createAutofillButton(form: HTMLFormElement | HTMLElement): HTMLElement 
     return container;
 }
 
+// Map from field_id to the corresponding DOM element(s)
+// For radio groups, stores the first radio element (use group_name to find all radios)
+let fieldElementMap: Map<string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> = new Map();
+
 // Prepare metadata for the backend agent using the advanced FieldMapper
 function getFormFieldsMetadata(form: HTMLFormElement | HTMLElement): any[] {
     const fields: any[] = [];
     const elements = getAllFillableElements(form.shadowRoot ? form.shadowRoot : form);
-    
+    fieldElementMap = new Map();
+
     // Process radio/checkbox groups
     const processedRadioGroups = new Set<string>();
-    
+
     let fieldCounter = 0;
 
     elements.forEach((element) => {
         // Advanced Label Detection
         const label = getComputedLabel(element);
-        
+
         // Surrounding context
         let surroundingText = '';
         const parent = element.closest('div, td, li, fieldset, section');
@@ -596,15 +608,18 @@ function getFormFieldsMetadata(form: HTMLFormElement | HTMLElement): any[] {
 
             const root = form.shadowRoot || form;
             const radios = Array.from(root.querySelectorAll(`input[type="radio"][name="${CSS.escape(groupName)}"]`));
-            
+
             const options = radios.map((r: any) => ({
                 value: r.value,
                 text: getComputedLabel(r) || r.value,
                 selected: r.checked
             }));
 
+            const fieldId = `field_${fieldCounter}`;
+            fieldElementMap.set(fieldId, element);
+
             fields.push({
-                field_id: `field_${fieldCounter}`,
+                field_id: fieldId,
                 element_type: 'radio',
                 input_type: 'radio',
                 name: groupName,
@@ -627,8 +642,11 @@ function getFormFieldsMetadata(form: HTMLFormElement | HTMLElement): any[] {
                 .map(o => ({ value: o.value, text: o.text.trim(), selected: o.selected }));
         }
 
+        const fieldId = `field_${fieldCounter}`;
+        fieldElementMap.set(fieldId, element);
+
         fields.push({
-            field_id: `field_${fieldCounter}`,
+            field_id: fieldId,
             element_type: element.tagName.toLowerCase() === 'select' ? 'select' : element.tagName.toLowerCase() === 'textarea' ? 'textarea' : 'input',
             input_type: element.type || '',
             name: element.name || '',
@@ -656,7 +674,17 @@ async function autofillForm(form: HTMLFormElement | HTMLElement) {
     clearPreviewHighlights();
 
     if (!currentProfile) {
-        alert('Please log in to Simplify for India extension first!');
+        // Check if it's a login issue or backend connectivity issue
+        try {
+            const result = await chrome.storage.local.get(['access_token']);
+            if (!result.access_token) {
+                showNotification('Please log in to Simplify for India extension first!', 'error');
+            } else {
+                showNotification('Could not load your profile. Please check if the backend is running.', 'error');
+            }
+        } catch {
+            showNotification('Please log in to Simplify for India extension first!', 'error');
+        }
         return;
     }
 
@@ -706,15 +734,14 @@ async function autofillForm(form: HTMLFormElement | HTMLElement) {
     // Separate filled vs unknown
     const filledResults = results.filter(r => r.action === 'fill');
     const unknownFields = results.filter(r => r.needsAI === true);
-    const elements = getAllFillableElements(form.shadowRoot ? form.shadowRoot : form);
 
     // Step 3: Show pre-fill review panel (if enabled) or fill directly
     if (autofillOptions.dryRun) {
         // Dry run: use review panel
-        showReviewPanel(form, filledResults, unknownFields, fieldsMetadata, elements, formSignature, url, cachedMappings);
+        showReviewPanel(form, filledResults, unknownFields, fieldsMetadata, formSignature, url, cachedMappings);
     } else {
         // Direct fill
-        await executeFieldFilling(form, filledResults, elements, formSignature, url, cachedMappings, results);
+        await executeFieldFilling(form, filledResults, formSignature, url, cachedMappings, results);
 
         // Step 4: Handle unknown fields
         if (unknownFields.length > 0) {
@@ -733,7 +760,6 @@ async function autofillForm(form: HTMLFormElement | HTMLElement) {
 async function executeFieldFilling(
     form: HTMLFormElement | HTMLElement,
     filledResults: any[],
-    elements: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[],
     formSignature: string,
     url: string,
     cachedMappings: any,
@@ -744,8 +770,7 @@ async function executeFieldFilling(
     for (const res of filledResults) {
         if (res.action === 'skip' || !res.value) continue;
 
-        const idx = parseInt(res.field_id.replace('field_', ''));
-        const element = elements[idx];
+        const element = fieldElementMap.get(res.field_id);
 
         if (element) {
             await fillField(element, res.value);
@@ -789,7 +814,6 @@ function showReviewPanel(
     filledResults: any[],
     unknownFields: any[],
     fieldsMetadata: any[],
-    elements: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[],
     formSignature: string,
     url: string,
     cachedMappings: any
@@ -896,14 +920,14 @@ function showReviewPanel(
 
         // Highlight field on hover
         row.addEventListener('mouseenter', () => {
-            const element = elements[idx];
+            const element = fieldElementMap.get(res.field_id);
             if (element) {
                 element.style.outline = '2px solid #6366f1';
                 element.style.backgroundColor = '#eef2ff';
             }
         });
         row.addEventListener('mouseleave', () => {
-            const element = elements[idx];
+            const element = fieldElementMap.get(res.field_id);
             if (element) {
                 element.style.outline = '';
                 element.style.backgroundColor = '';
@@ -960,7 +984,7 @@ function showReviewPanel(
         const was_dry_run = autofillOptions.dryRun;
         autofillOptions.dryRun = false;
 
-        await executeFieldFilling(form, approved_results, elements, formSignature, url, cachedMappings, approved_results);
+        await executeFieldFilling(form, approved_results, formSignature, url, cachedMappings, approved_results);
 
         // Handle unknown fields
         if (unknownFields.length > 0) {
@@ -1090,9 +1114,17 @@ async function fillUnknownFieldsWithAI(
     try {
         const headers = await getAuthHeaders();
 
-        const unknownFieldsMetadata = unknownFields.map(uf => {
+        // Re-index fields for the AI so field_ids are sequential (field_0, field_1, ...)
+        // and build a mapping back to original field indices
+        const indexMap: Map<string, string> = new Map(); // AI field_id -> original field_id
+        const unknownFieldsMetadata = unknownFields.map((uf, i) => {
             const idx = parseInt(uf.field_id.replace('field_', ''));
-            return fieldsMetadata[idx];
+            const meta = fieldsMetadata[idx];
+            const aiFieldId = `field_${i}`;
+            indexMap.set(aiFieldId, uf.field_id);
+            // Also map original field_id in case LLM returns it
+            indexMap.set(uf.field_id, uf.field_id);
+            return { ...meta, field_id: aiFieldId };
         });
 
         const response = await fetch(`${API_URL}/v1/mapping/agent-fill`, {
@@ -1104,23 +1136,22 @@ async function fillUnknownFieldsWithAI(
             }),
         });
 
-        if (!response.ok) throw new Error('AI API failed');
+        if (!response.ok) {
+            const errText = await response.text().catch(() => '');
+            throw new Error(`AI API failed (${response.status}): ${errText}`);
+        }
         const data = await response.json();
         const aiResults = data.results || [];
 
-        const elements = getAllFillableElements(form.shadowRoot ? form.shadowRoot : form);
         let aiFilledCount = 0;
 
         for (const res of aiResults) {
             if (res.action === 'skip') continue;
 
-            const originalFieldId = unknownFields.find((uf, i) =>
-                `field_${i}` === res.field_id
-            )?.field_id;
+            const originalFieldId = indexMap.get(res.field_id);
 
             if (originalFieldId) {
-                const idx = parseInt(originalFieldId.replace('field_', ''));
-                const element = elements[idx];
+                const element = fieldElementMap.get(originalFieldId);
 
                 if (element && res.value) {
                     await fillField(element, res.value);
