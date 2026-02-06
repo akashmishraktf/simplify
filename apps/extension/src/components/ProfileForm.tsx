@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { updateProfile } from '../utils/api';
 import EmploymentForm from './EmploymentForm';
 import EducationForm from './EducationForm';
+import { theme } from '../utils/theme';
 
 declare const chrome: any;
 
@@ -227,9 +228,10 @@ const ProfileForm = ({ profile, onUpdate }) => {
         marginBottom: '14px',
         boxSizing: 'border-box' as const,
         fontSize: '14px',
-        borderRadius: '10px',
-        border: '1px solid #e2e8f0',
-        background: '#f8fafc',
+        borderRadius: theme.borderRadius.md,
+        border: `1px solid ${theme.colors.border}`,
+        background: theme.colors.inputBg,
+        color: theme.colors.text,
         transition: 'all 0.2s',
         outline: 'none',
     };
@@ -240,45 +242,58 @@ const ProfileForm = ({ profile, onUpdate }) => {
         fontWeight: 600 as const,
         marginBottom: '6px',
         marginTop: '8px',
-        color: '#334155',
+        color: theme.colors.textSecondary,
+    };
+
+    const sectionStyle = {
+        border: `1px solid ${theme.colors.border}`,
+        padding: '16px',
+        borderRadius: theme.borderRadius.lg,
+        marginTop: '16px',
+        marginBottom: '16px',
+        backgroundColor: theme.colors.bgSecondary,
     };
 
     return (
-        <div style={{ padding: '4px' }}>
+        <div style={{ paddingBottom: '40px' }}>
             <div style={{ 
-                marginBottom: '16px', 
-                background: '#fff', 
-                padding: '16px', 
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                marginBottom: '20px', 
+                background: theme.colors.bgSecondary,
+                padding: '20px', 
+                borderRadius: theme.borderRadius.lg,
+                border: `1px solid ${theme.colors.border}`,
             }}>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', color: '#0f172a' }}>Your profile</h3>
-                <p style={{ margin: 0, fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: theme.colors.text }}>Your profile</h3>
+                <p style={{ margin: 0, fontSize: '13px', color: theme.colors.textSecondary, lineHeight: 1.5 }}>
                     Keep this in sync—autofill pulls directly from here.
                 </p>
             </div>
-            <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '4px' }}>
-                <form onSubmit={handleSubmit}>
-                <label style={labelStyle}>First Name</label>
-                <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    placeholder="John"
-                    style={inputStyle}
-                />
-
-                <label style={labelStyle}>Last Name</label>
-                <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    placeholder="Doe"
-                    style={inputStyle}
-                />
+            
+            <form onSubmit={handleSubmit}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                        <label style={labelStyle}>First Name</label>
+                        <input
+                            type="text"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleChange}
+                            placeholder="John"
+                            style={inputStyle}
+                        />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Last Name</label>
+                        <input
+                            type="text"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleChange}
+                            placeholder="Doe"
+                            style={inputStyle}
+                        />
+                    </div>
+                </div>
 
                 <label style={labelStyle}>Full Name (optional)</label>
                 <input
@@ -310,25 +325,30 @@ const ProfileForm = ({ profile, onUpdate }) => {
                     style={{ ...inputStyle, resize: 'vertical' as const }}
                 />
 
-                <label style={labelStyle}>Current Location</label>
-                <input
-                    type="text"
-                    name="currentLocation"
-                    value={formData.currentLocation}
-                    onChange={handleChange}
-                    placeholder="Bangalore, Karnataka"
-                    style={inputStyle}
-                />
-
-                <label style={labelStyle}>Preferred Location</label>
-                <input
-                    type="text"
-                    name="preferredLocation"
-                    value={formData.preferredLocation}
-                    onChange={handleChange}
-                    placeholder="Bangalore, Hyderabad, Remote"
-                    style={inputStyle}
-                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                        <label style={labelStyle}>Current Location</label>
+                        <input
+                            type="text"
+                            name="currentLocation"
+                            value={formData.currentLocation}
+                            onChange={handleChange}
+                            placeholder="Bangalore, Karnataka"
+                            style={inputStyle}
+                        />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Preferred Location</label>
+                        <input
+                            type="text"
+                            name="preferredLocation"
+                            value={formData.preferredLocation}
+                            onChange={handleChange}
+                            placeholder="Bangalore, Hyderabad, Remote"
+                            style={inputStyle}
+                        />
+                    </div>
+                </div>
 
                 <label style={labelStyle}>Current Company</label>
                 <input
@@ -340,45 +360,55 @@ const ProfileForm = ({ profile, onUpdate }) => {
                     style={inputStyle}
                 />
 
-                <label style={labelStyle}>Notice Period (days)</label>
-                <input
-                    type="number"
-                    name="noticePeriodDays"
-                    value={formData.noticePeriodDays}
-                    onChange={handleChange}
-                    placeholder="30"
-                    style={inputStyle}
-                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                        <label style={labelStyle}>Notice Period (days)</label>
+                        <input
+                            type="number"
+                            name="noticePeriodDays"
+                            value={formData.noticePeriodDays}
+                            onChange={handleChange}
+                            placeholder="30"
+                            style={inputStyle}
+                        />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Current CTC (₹/year)</label>
+                        <input
+                            type="text"
+                            name="currentCtc"
+                            value={formData.currentCtc}
+                            onChange={handleChange}
+                            placeholder="8,00,000"
+                            style={inputStyle}
+                        />
+                    </div>
+                </div>
 
-                <label style={labelStyle}>Current CTC (₹/year)</label>
-                <input
-                    type="text"
-                    name="currentCtc"
-                    value={formData.currentCtc}
-                    onChange={handleChange}
-                    placeholder="8,00,000"
-                    style={inputStyle}
-                />
-
-                <label style={labelStyle}>Expected CTC (₹/year)</label>
-                <input
-                    type="text"
-                    name="expectedCtc"
-                    value={formData.expectedCtc}
-                    onChange={handleChange}
-                    placeholder="12,00,000"
-                    style={inputStyle}
-                />
-
-                <label style={labelStyle}>Desired Salary (optional)</label>
-                <input
-                    type="text"
-                    name="desiredSalary"
-                    value={formData.desiredSalary}
-                    onChange={handleChange}
-                    placeholder="₹15,00,000 / $100k / 60 LPA"
-                    style={inputStyle}
-                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                        <label style={labelStyle}>Expected CTC (₹/year)</label>
+                        <input
+                            type="text"
+                            name="expectedCtc"
+                            value={formData.expectedCtc}
+                            onChange={handleChange}
+                            placeholder="12,00,000"
+                            style={inputStyle}
+                        />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Desired Salary (optional)</label>
+                        <input
+                            type="text"
+                            name="desiredSalary"
+                            value={formData.desiredSalary}
+                            onChange={handleChange}
+                            placeholder="₹15,00,000 / $100k / 60 LPA"
+                            style={inputStyle}
+                        />
+                    </div>
+                </div>
 
                 <label style={labelStyle}>Skills (comma-separated)</label>
                 <textarea
@@ -441,27 +471,20 @@ const ProfileForm = ({ profile, onUpdate }) => {
                 />
 
                 {/* Demographic & Legal Fields - Collapsible */}
-                <div style={{
-                    border: '1px solid #ddd',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    marginTop: '10px',
-                    marginBottom: '10px',
-                    backgroundColor: '#fafafa',
-                }}>
+                <div style={sectionStyle}>
                     <div
                         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
                         onClick={() => setShowDemographics(!showDemographics)}
                     >
-                        <h4 style={{ margin: 0, fontSize: '13px' }}>📋 Demographic & Legal Info</h4>
-                        <span style={{ fontSize: '12px' }}>{showDemographics ? '▼' : '▶'}</span>
+                        <h4 style={{ margin: 0, fontSize: '14px', color: theme.colors.text }}>📋 Demographic & Legal Info</h4>
+                        <span style={{ fontSize: '12px', color: theme.colors.textSecondary }}>{showDemographics ? '▼' : '▶'}</span>
                     </div>
-                    <p style={{ margin: '6px 0 0 0', fontSize: '10px', color: '#666' }}>
+                    <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: theme.colors.textSecondary }}>
                         Optional fields for EEOC compliance. AI will use smart defaults if empty.
                     </p>
 
                     {showDemographics && (
-                        <div style={{ marginTop: '10px' }}>
+                        <div style={{ marginTop: '16px' }}>
                             <label style={labelStyle}>Gender</label>
                             <select name="gender" value={formData.gender} onChange={handleChange} style={inputStyle}>
                                 <option value="">Not specified (AI will use "Prefer not to say")</option>
@@ -546,7 +569,7 @@ const ProfileForm = ({ profile, onUpdate }) => {
                                 <option value="Prefer not to say">Prefer not to say</option>
                             </select>
 
-                            <hr style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #ddd' }} />
+                            <hr style={{ margin: '16px 0', border: 'none', borderTop: `1px solid ${theme.colors.border}` }} />
 
                             <label style={labelStyle}>Availability / Start Date</label>
                             <input
@@ -600,17 +623,10 @@ const ProfileForm = ({ profile, onUpdate }) => {
                     )}
                 </div>
 
-                <div style={{
-                    border: '1px solid #ddd',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    marginTop: '10px',
-                    marginBottom: '10px',
-                    backgroundColor: '#f6f7fb',
-                }}>
+                <div style={sectionStyle}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ margin: 0, fontSize: '13px' }}>Autofill settings</h4>
-                        <label style={{ display: 'flex', alignItems: 'center', fontSize: '11px', gap: '6px' }}>
+                        <h4 style={{ margin: 0, fontSize: '14px', color: theme.colors.text }}>Autofill settings</h4>
+                        <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', gap: '6px', color: theme.colors.text }}>
                             <input
                                 type="checkbox"
                                 checked={autofillOptions.dryRun}
@@ -620,12 +636,12 @@ const ProfileForm = ({ profile, onUpdate }) => {
                             Dry run (highlight only)
                         </label>
                     </div>
-                    <p style={{ margin: '6px 0 8px 0', fontSize: '10px', color: '#555' }}>
+                    <p style={{ margin: '6px 0 12px 0', fontSize: '12px', color: theme.colors.textSecondary }}>
                         Choose which fields to prefill. Disable any that often conflict; dry run highlights fields without writing values.
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
                         {toggleFields.map(({ key, label }) => (
-                            <label key={key} style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <label key={key} style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: theme.colors.textSecondary }}>
                                 <input
                                     type="checkbox"
                                     checked={autofillOptions.enabledFields[key]}
@@ -646,16 +662,17 @@ const ProfileForm = ({ profile, onUpdate }) => {
                     disabled={saving}
                     style={{
                         width: '100%',
-                        padding: '12px',
-                        marginTop: '10px',
-                        background: saving ? '#cbd5e1' : 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                        padding: '14px',
+                        marginTop: '20px',
+                        background: saving ? theme.colors.bgSecondary : theme.colors.primary,
                         color: 'white',
                         border: 'none',
-                        borderRadius: '12px',
+                        borderRadius: theme.borderRadius.md,
                         cursor: saving ? 'not-allowed' : 'pointer',
-                        fontWeight: 700,
-                        fontSize: '14px',
-                        boxShadow: saving ? 'none' : '0 10px 24px rgba(79,70,229,0.25)',
+                        fontWeight: 600,
+                        fontSize: '15px',
+                        boxShadow: saving ? 'none' : theme.shadows.lg,
+                        transition: 'background 0.2s',
                     }}
                 >
                     {saving ? 'Saving...' : 'Save Profile'}
@@ -664,15 +681,17 @@ const ProfileForm = ({ profile, onUpdate }) => {
 
             {message && (
                 <p style={{
-                    marginTop: '10px',
-                    fontSize: '11px',
-                    color: message.includes('success') ? 'green' : 'red',
+                    marginTop: '16px',
+                    fontSize: '13px',
+                    color: message.includes('success') ? theme.colors.success : theme.colors.danger,
                     textAlign: 'center',
+                    padding: '8px',
+                    borderRadius: theme.borderRadius.md,
+                    background: message.includes('success') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'
                 }}>
                     {message}
                 </p>
             )}
-            </div>
         </div>
     );
 };

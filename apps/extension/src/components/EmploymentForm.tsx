@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { theme } from '../utils/theme';
 
 const EmploymentForm = ({ employment = [], onChange }) => {
     const [jobs, setJobs] = useState(employment.length > 0 ? employment : [{
@@ -38,44 +39,53 @@ const EmploymentForm = ({ employment = [], onChange }) => {
 
     const inputStyle = {
         width: '100%',
-        padding: '6px',
-        marginBottom: '8px',
+        padding: '12px 14px',
+        marginBottom: '14px',
         boxSizing: 'border-box' as const,
-        fontSize: '12px',
+        fontSize: '14px',
+        borderRadius: theme.borderRadius.md,
+        border: `1px solid ${theme.colors.border}`,
+        background: theme.colors.inputBg,
+        color: theme.colors.text,
+        transition: 'all 0.2s',
+        outline: 'none',
     };
 
     const labelStyle = {
         display: 'block',
-        fontSize: '11px',
-        fontWeight: 'bold' as const,
-        marginBottom: '3px',
-        marginTop: '5px',
+        fontSize: '13px',
+        fontWeight: 600 as const,
+        marginBottom: '6px',
+        marginTop: '8px',
+        color: theme.colors.textSecondary,
+    };
+
+    const cardStyle = {
+        border: `1px solid ${theme.colors.border}`,
+        padding: '16px',
+        marginBottom: '16px',
+        borderRadius: theme.borderRadius.lg,
+        backgroundColor: theme.colors.bgSecondary,
     };
 
     return (
         <div>
-            <h4 style={{ margin: '10px 0 5px 0', fontSize: '13px' }}>Employment History</h4>
+            <h4 style={{ margin: '24px 0 12px 0', fontSize: '16px', color: theme.colors.text }}>Employment History</h4>
             {jobs.map((job, index) => (
-                <div key={index} style={{
-                    border: '1px solid #ddd',
-                    padding: '10px',
-                    marginBottom: '10px',
-                    borderRadius: '4px',
-                    backgroundColor: '#f9f9f9',
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>Job {index + 1}</span>
+                <div key={index} style={cardStyle}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: theme.colors.text }}>Job {index + 1}</span>
                         {jobs.length > 1 && (
                             <button
                                 type="button"
                                 onClick={() => removeJob(index)}
                                 style={{
-                                    padding: '2px 6px',
-                                    fontSize: '10px',
-                                    backgroundColor: '#f44336',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '3px',
+                                    padding: '6px 10px',
+                                    fontSize: '12px',
+                                    backgroundColor: 'transparent',
+                                    color: theme.colors.danger,
+                                    border: `1px solid ${theme.colors.danger}`,
+                                    borderRadius: theme.borderRadius.md,
                                     cursor: 'pointer',
                                 }}
                             >
@@ -102,7 +112,7 @@ const EmploymentForm = ({ employment = [], onChange }) => {
                         style={inputStyle}
                     />
 
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '16px' }}>
                         <div style={{ flex: 1 }}>
                             <label style={labelStyle}>Start Date</label>
                             <input
@@ -124,12 +134,12 @@ const EmploymentForm = ({ employment = [], onChange }) => {
                         </div>
                     </div>
 
-                    <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '8px' }}>
                         <input
                             type="checkbox"
                             checked={job.current}
                             onChange={(e) => handleJobChange(index, 'current', e.target.checked)}
-                            style={{ marginRight: '5px' }}
+                            style={{ margin: 0 }}
                         />
                         Currently working here
                     </label>
@@ -150,14 +160,14 @@ const EmploymentForm = ({ employment = [], onChange }) => {
                 onClick={addJob}
                 style={{
                     width: '100%',
-                    padding: '6px',
-                    fontSize: '11px',
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
+                    padding: '10px',
+                    fontSize: '13px',
+                    backgroundColor: 'transparent',
+                    color: theme.colors.primary,
+                    border: `1px dashed ${theme.colors.primary}`,
+                    borderRadius: theme.borderRadius.md,
                     cursor: 'pointer',
-                    marginBottom: '10px',
+                    fontWeight: 600,
                 }}
             >
                 + Add Another Job

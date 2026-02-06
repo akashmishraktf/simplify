@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { login, register } from '../utils/api';
+import { theme } from '../utils/theme';
 
 const Login = ({ onLoginSuccess }) => {
     const [email, setEmail] = useState('');
@@ -26,16 +27,24 @@ const Login = ({ onLoginSuccess }) => {
         }
     };
 
+    const cardStyle: React.CSSProperties = {
+        background: theme.colors.bgSecondary,
+        padding: '32px',
+        borderRadius: theme.borderRadius.xl,
+        border: `1px solid ${theme.colors.border}`,
+        boxShadow: theme.shadows.lg,
+    };
+
     const fieldStyle: React.CSSProperties = {
         width: '100%',
-        padding: '14px 16px',
+        padding: '12px 16px',
         marginBottom: '16px',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
+        borderRadius: theme.borderRadius.md,
+        border: `1px solid ${theme.colors.border}`,
         fontSize: '15px',
-        background: '#f8fafc',
+        background: theme.colors.inputBg,
         boxSizing: 'border-box',
-        color: '#334155',
+        color: theme.colors.text,
         transition: 'all 0.2s',
         outline: 'none',
     };
@@ -43,23 +52,23 @@ const Login = ({ onLoginSuccess }) => {
     const labelStyle: React.CSSProperties = {
         fontSize: 13,
         fontWeight: 600,
-        color: '#334155',
-        marginBottom: 6,
+        color: theme.colors.textSecondary,
+        marginBottom: 8,
         display: 'block',
     };
 
     return (
-        <div style={{ padding: '8px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <h3 style={{ margin: '0 0 8px', fontSize: 24, color: '#0f172a', fontWeight: 800 }}>
+        <div style={cardStyle}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: 24, color: theme.colors.text, fontWeight: 700 }}>
                     {isSignup ? 'Create account' : 'Welcome back'}
                 </h3>
-                <p style={{ margin: 0, fontSize: 14, color: '#64748b', lineHeight: 1.5 }}>
+                <p style={{ margin: 0, fontSize: 14, color: theme.colors.textSecondary, lineHeight: 1.5 }}>
                     {isSignup ? 'Start automating your job applications today.' : 'Sign in to sync your profile and settings.'}
                 </p>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: 'grid' }}>
+            <form onSubmit={handleSubmit}>
                 <div>
                     <label style={labelStyle}>Email address</label>
                     <input
@@ -69,8 +78,8 @@ const Login = ({ onLoginSuccess }) => {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         style={fieldStyle}
-                        onFocus={(e) => e.target.style.borderColor = '#6366f1'}
-                        onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                        onFocus={(e) => e.target.style.borderColor = theme.colors.primary}
+                        onBlur={(e) => e.target.style.borderColor = theme.colors.border}
                     />
                 </div>
 
@@ -83,8 +92,8 @@ const Login = ({ onLoginSuccess }) => {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         style={fieldStyle}
-                        onFocus={(e) => e.target.style.borderColor = '#6366f1'}
-                        onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                        onFocus={(e) => e.target.style.borderColor = theme.colors.primary}
+                        onBlur={(e) => e.target.style.borderColor = theme.colors.border}
                     />
                 </div>
 
@@ -94,20 +103,17 @@ const Login = ({ onLoginSuccess }) => {
                     style={{
                         width: '100%',
                         padding: '14px',
-                        borderRadius: '12px',
-                        background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+                        borderRadius: theme.borderRadius.md,
+                        background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.primaryHover})`,
                         color: '#fff',
                         border: 'none',
-                        fontWeight: 700,
+                        fontWeight: 600,
                         fontSize: 15,
                         cursor: loading ? 'wait' : 'pointer',
-                        boxShadow: '0 4px 12px rgba(79,70,229,0.25)',
-                        opacity: loading ? 0.8 : 1,
-                        transition: 'transform 0.1s',
+                        opacity: loading ? 0.7 : 1,
+                        transition: 'opacity 0.2s',
                         marginTop: '8px'
                     }}
-                    onMouseDown={(e) => !loading && (e.currentTarget.style.transform = 'scale(0.98)')}
-                    onMouseUp={(e) => !loading && (e.currentTarget.style.transform = 'scale(1)')}
                 >
                     {loading ? 'Processing...' : (isSignup ? 'Create Account' : 'Sign In')}
                 </button>
@@ -115,20 +121,20 @@ const Login = ({ onLoginSuccess }) => {
 
             {error && (
                 <div style={{ 
-                    marginTop: '16px', 
+                    marginTop: '20px', 
                     padding: '12px', 
-                    borderRadius: '8px', 
-                    background: '#fef2f2', 
-                    color: '#dc2626', 
+                    borderRadius: theme.borderRadius.md, 
+                    background: 'rgba(239, 68, 68, 0.1)', 
+                    color: theme.colors.danger, 
                     fontSize: '13px', 
                     textAlign: 'center',
-                    border: '1px solid #fee2e2'
+                    border: `1px solid ${theme.colors.danger}33`
                 }}>
                     {error}
                 </div>
             )}
 
-            <div style={{ marginTop: '24px', fontSize: 14, color: '#64748b', textAlign: 'center' }}>
+            <div style={{ marginTop: '24px', fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center' }}>
                 {isSignup ? 'Already have an account?' : "New to Simplify?"}{' '}
                 <button
                     onClick={(e) => {
@@ -139,8 +145,8 @@ const Login = ({ onLoginSuccess }) => {
                     style={{ 
                         background: 'none', 
                         border: 'none', 
-                        color: '#4f46e5', 
-                        fontWeight: 700, 
+                        color: theme.colors.primary, 
+                        fontWeight: 600, 
                         cursor: 'pointer',
                         padding: 0,
                         fontSize: 'inherit'
