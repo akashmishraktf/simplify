@@ -55,6 +55,8 @@ const DEFAULT_ENABLED_FIELDS: Record<string, boolean> = {
 
 let currentProfile: any = null;
 let autofillButtons: HTMLElement[] = [];
+let currentButtonForm: WeakRef<HTMLElement> | null = null;
+let simplifyStyleInjected = false;
 let autofillOptions: AutofillOptions = {
     dryRun: false,
     enabledFields: { ...DEFAULT_ENABLED_FIELDS },
@@ -511,22 +513,25 @@ function createAutofillButton(form: HTMLFormElement | HTMLElement): HTMLElement 
         <span style="letter-spacing: 0.3px;">Autofill with Simplify</span>
     `;
 
-    // Add keyframes for animation
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(100px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4); }
-            50% { box-shadow: 0 4px 30px rgba(102, 126, 234, 0.6); }
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    `;
-    document.head.appendChild(style);
+    // Add keyframes for animation (only once)
+    if (!simplifyStyleInjected) {
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateX(100px); }
+                to { opacity: 1; transform: translateX(0); }
+            }
+            @keyframes pulse {
+                0%, 100% { box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4); }
+                50% { box-shadow: 0 4px 30px rgba(102, 126, 234, 0.6); }
+            }
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+        simplifyStyleInjected = true;
+    }
 
     // Hover effects
     button.addEventListener('mouseenter', () => {
@@ -1328,16 +1333,31 @@ function detectForms() {
         }
     }
 
-    // Remove old buttons
-    autofillButtons.forEach(b => b.remove());
-    autofillButtons = [];
+    // Only update button if the target form has changed
+    const previousForm = currentButtonForm?.deref() ?? null;
+    const formChanged = bestForm !== previousForm;
+    const shouldShow = bestForm && maxScore > 5;
+    const buttonExists = autofillButtons.length > 0 && autofillButtons[0].isConnected;
 
-    if (bestForm && maxScore > 5) {
-        console.log(`[Simplify-for-India] Best form found (${currentPlatform}):`, bestForm, `Score: ${maxScore}`);
-        const btn = createAutofillButton(bestForm);
-        document.body.appendChild(btn);
-        autofillButtons.push(btn);
+    if (shouldShow && buttonExists && !formChanged) {
+        // Same form, button already visible — nothing to do
+        return;
     }
+
+    // Remove old buttons and add new one (wrapped to avoid triggering MutationObserver)
+    simplifyDomUpdate(() => {
+        autofillButtons.forEach(b => b.remove());
+        autofillButtons = [];
+        currentButtonForm = null;
+
+        if (shouldShow) {
+            console.log(`[Simplify-for-India] Best form found (${currentPlatform}):`, bestForm, `Score: ${maxScore}`);
+            const btn = createAutofillButton(bestForm!);
+            document.body.appendChild(btn);
+            autofillButtons.push(btn);
+            currentButtonForm = new WeakRef(bestForm!);
+        }
+    });
 }
 
 // ========================================================================
@@ -1516,9 +1536,35 @@ function showMultiStepControls(form: HTMLElement) {
 
 // Throttled detection
 let timer: any;
-function onDomChange() {
+let isOwnMutation = false;
+
+function onDomChange(mutations: MutationRecord[]) {
+    // Ignore mutations caused by our own injected elements
+    if (isOwnMutation) return;
+    const isSimplifyOnly = mutations.every(m => {
+        for (const node of Array.from(m.addedNodes).concat(Array.from(m.removedNodes))) {
+            if (node instanceof HTMLElement &&
+                (node.classList?.contains('simplify-india-autofill-btn') ||
+                 node.hasAttribute?.('data-simplify-notification') ||
+                 node.classList?.contains('simplify-confidence-badge') ||
+                 node.classList?.contains('simplify-inline-review') ||
+                 node.classList?.contains('simplify-review-panel') ||
+                 node.classList?.contains('simplify-multistep-controls'))) {
+                return true;
+            }
+        }
+        return false;
+    });
+    if (isSimplifyOnly) return;
+
     clearTimeout(timer);
     timer = setTimeout(detectForms, 1000);
+}
+
+// Wrap DOM mutations from our code so the observer ignores them
+function simplifyDomUpdate(fn: () => void) {
+    isOwnMutation = true;
+    try { fn(); } finally { isOwnMutation = false; }
 }
 
 // Initial load
