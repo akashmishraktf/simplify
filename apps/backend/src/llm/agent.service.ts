@@ -865,4 +865,163 @@ Return ONLY a valid JSON array (no markdown, no explanation):
       })
       .join("\n\n");
   }
+
+  // ========================================================================
+  // Custom Question Answering
+  // ========================================================================
+
+  /**
+   * Generate a contextual answer to a custom application question using AI.
+   * Uses the user's profile, job description context, and the question to
+   * produce a tailored response.
+   */
+  async generateCustomAnswer(
+    question_text: string,
+    profile: UserProfile,
+    job_description: string,
+    page_url: string,
+    similar_answers: { question_text: string; answer_text: string; similarity: number }[] = [],
+    apiKey?: string
+  ): Promise<{ answer: string; confidence: number; reasoning: string }> {
+    let model_to_use = this.model;
+
+    if (apiKey) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        model_to_use = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      } catch (e) {
+        console.error("[Agent] Invalid user-provided API key:", e);
+      }
+    }
+
+    if (!model_to_use) {
+      return {
+        answer: "",
+        confidence: 0,
+        reasoning: "No LLM configured",
+      };
+    }
+
+    const profile_summary = this.buildProfileSummary(profile);
+    const prompt = this.buildCustomAnswerPrompt(
+      question_text,
+      profile_summary,
+      job_description,
+      page_url,
+      similar_answers
+    );
+
+    try {
+      const result = await model_to_use.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      return this.parseCustomAnswerResponse(text);
+    } catch (error) {
+      console.error("[Agent] Custom answer generation failed:", error);
+      // If we have similar answers, return the best one as fallback
+      if (similar_answers.length > 0) {
+        return {
+          answer: similar_answers[0].answer_text,
+          confidence: similar_answers[0].similarity * 0.8,
+          reasoning: "Fallback to most similar saved answer",
+        };
+      }
+      return {
+        answer: "",
+        confidence: 0,
+        reasoning: "Generation failed and no similar answers available",
+      };
+    }
+  }
+
+  private buildCustomAnswerPrompt(
+    question_text: string,
+    profile_summary: string,
+    job_description: string,
+    page_url: string,
+    similar_answers: { question_text: string; answer_text: string; similarity: number }[]
+  ): string {
+    let prompt = `You are an expert job application assistant. Generate a compelling, authentic answer for the following application question.
+
+## User Profile
+${profile_summary}
+
+## Application URL
+${page_url}
+`;
+
+    if (job_description) {
+      prompt += `
+## Job Description
+${job_description.slice(0, 3000)}
+`;
+    }
+
+    if (similar_answers.length > 0) {
+      prompt += `
+## Previously Saved Answers (for reference/inspiration)
+${similar_answers.map((sa, i) => `${i + 1}. Question: "${sa.question_text}"
+   Answer: "${sa.answer_text.slice(0, 500)}"
+   Similarity: ${(sa.similarity * 100).toFixed(0)}%`).join("\n\n")}
+`;
+    }
+
+    prompt += `
+## Question to Answer
+"${question_text}"
+
+## Instructions
+
+1. Write a professional, authentic response tailored to the user's profile and the specific job.
+2. If there are similar saved answers, adapt them to this specific context rather than copying verbatim.
+3. Keep the tone professional but personable. Avoid generic platitudes.
+4. Reference specific experiences, skills, or achievements from the user's profile when relevant.
+5. If the job description mentions specific technologies, values, or requirements, weave them in naturally.
+6. Keep the answer concise but substantive (typically 100-300 words for text areas, 1-2 sentences for short answers).
+7. Do NOT fabricate experiences or skills the user doesn't have.
+
+Return ONLY valid JSON (no markdown, no extra text):
+{
+  "answer": "Your generated answer text here",
+  "confidence": 0.85,
+  "reasoning": "Brief explanation of the approach taken"
+}`;
+
+    return prompt;
+  }
+
+  private parseCustomAnswerResponse(text: string): {
+    answer: string;
+    confidence: number;
+    reasoning: string;
+  } {
+    try {
+      let clean_text = text.trim();
+      if (clean_text.startsWith("```")) {
+        clean_text = clean_text
+          .replace(/```json\n?/g, "")
+          .replace(/```\n?/g, "");
+      }
+
+      const parsed = JSON.parse(clean_text);
+      return {
+        answer: parsed.answer || "",
+        confidence: parsed.confidence || 0.5,
+        reasoning: parsed.reasoning || "",
+      };
+    } catch (error) {
+      console.error("[Agent] Failed to parse custom answer response:", text);
+      // Try to extract answer from raw text
+      const raw_text = text.trim();
+      if (raw_text.length > 10 && raw_text.length < 5000) {
+        return {
+          answer: raw_text,
+          confidence: 0.4,
+          reasoning: "Extracted from raw response (JSON parse failed)",
+        };
+      }
+      return { answer: "", confidence: 0, reasoning: "Parse failed" };
+    }
+  }
 }

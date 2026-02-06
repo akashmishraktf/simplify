@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getProfile, logout } from '../utils/api';
 import ProfileForm from './ProfileForm';
 import ApplicationHistory from './ApplicationHistory';
+import QABank from './QABank';
 import Settings from './Settings';
 
 const Dashboard = ({ onLogout }) => {
@@ -116,6 +117,12 @@ const Dashboard = ({ onLogout }) => {
                     Applications
                 </button>
                 <button
+                    style={tabStyle(activeTab === 'qabank')}
+                    onClick={() => setActiveTab('qabank')}
+                >
+                    Q&A Bank
+                </button>
+                <button
                     style={tabStyle(activeTab === 'settings')}
                     onClick={() => setActiveTab('settings')}
                 >
@@ -130,6 +137,9 @@ const Dashboard = ({ onLogout }) => {
                 )}
                 {activeTab === 'applications' && (
                     <ApplicationHistory />
+                )}
+                {activeTab === 'qabank' && (
+                    <QABank />
                 )}
                 {activeTab === 'settings' && (
                     <Settings />

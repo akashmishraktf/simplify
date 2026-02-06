@@ -481,7 +481,8 @@ export function getComputedLabel(field: HTMLElement): string {
 }
 
 /**
- * Recursively finds all form fields, piercing Shadow DOM
+ * Recursively finds all form fields, piercing Shadow DOM.
+ * Enhanced to also detect contenteditable divs, [role="textbox"], and custom web components.
  */
 export function getAllFillableElements(root: Document | ShadowRoot | HTMLElement = document): (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[] {
     const elements: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[] = [];
@@ -490,6 +491,18 @@ export function getAllFillableElements(root: Document | ShadowRoot | HTMLElement
     const inputs = root.querySelectorAll('input, select, textarea');
     inputs.forEach(el => {
         elements.push(el as any);
+    });
+
+    // Get contenteditable elements and role="textbox" (rich text editors, custom inputs)
+    const contentEditables = root.querySelectorAll(
+        '[contenteditable="true"], [contenteditable=""], [role="textbox"], [role="combobox"]'
+    );
+    contentEditables.forEach(el => {
+        // Skip if it's already an input/select/textarea
+        if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) return;
+        // Wrap as a pseudo-element for our pipeline
+        const wrapper = createContentEditableWrapper(el as HTMLElement);
+        if (wrapper) elements.push(wrapper as any);
     });
 
     // Recursively check all elements for shadow roots
@@ -517,11 +530,250 @@ export function getAllFillableElements(root: Document | ShadowRoot | HTMLElement
         // Filter out hidden/disabled/read-only
         if (el.type === 'hidden' || el.type === 'submit' || el.type === 'button' || el.type === 'image') return false;
         if (el.disabled || el.readOnly) return false;
-        // Check visibility
-        const style = window.getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        // Check visibility (skip for content-editable wrappers - they handle their own visibility)
+        if (!(el as any).__contentEditableRef) {
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+        }
         return true;
     });
+}
+
+/**
+ * Creates a pseudo input wrapper around a contenteditable element
+ * so it can participate in our form field pipeline.
+ */
+function createContentEditableWrapper(el: HTMLElement): any {
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return null;
+
+    // Create a proxy object that behaves like an HTMLInputElement
+    const wrapper = {
+        __contentEditableRef: el,
+        tagName: 'TEXTAREA',
+        type: 'text',
+        name: el.getAttribute('name') || el.getAttribute('data-name') || '',
+        id: el.id || '',
+        placeholder: el.getAttribute('placeholder') || el.getAttribute('data-placeholder') || '',
+        required: el.hasAttribute('required') || el.getAttribute('aria-required') === 'true',
+        disabled: false,
+        readOnly: false,
+        value: el.textContent || el.innerText || '',
+        // Forward DOM methods
+        getAttribute: (attr: string) => el.getAttribute(attr),
+        closest: (sel: string) => el.closest(sel),
+        querySelector: (sel: string) => el.querySelector(sel),
+        querySelectorAll: (sel: string) => el.querySelectorAll(sel),
+        parentElement: el.parentElement,
+        previousSibling: el.previousSibling,
+        scrollIntoView: (opts: any) => el.scrollIntoView(opts),
+        focus: () => el.focus(),
+        click: () => el.click(),
+        blur: () => el.blur(),
+        dispatchEvent: (e: Event) => el.dispatchEvent(e),
+        style: el.style,
+        setAttribute: (name: string, val: string) => el.setAttribute(name, val),
+        removeAttribute: (name: string) => el.removeAttribute(name),
+        hasAttribute: (name: string) => el.hasAttribute(name),
+    };
+
+    // Override value setter to write to contenteditable
+    Object.defineProperty(wrapper, 'value', {
+        get: () => el.textContent || el.innerText || '',
+        set: (val: string) => {
+            el.textContent = val;
+        },
+    });
+
+    return wrapper;
+}
+
+// ============================================================================
+// FIELD CLUSTERING (for "virtual form" detection on ambiguous platforms)
+// ============================================================================
+
+export interface FieldCluster {
+    root: HTMLElement;
+    elements: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[];
+    score: number;
+    depth: number;
+}
+
+/**
+ * Find the nearest common ancestor for a set of elements
+ */
+function nearestCommonAncestor(elements: HTMLElement[]): HTMLElement {
+    if (elements.length === 0) return document.body;
+    if (elements.length === 1) return elements[0].parentElement || document.body;
+
+    // Build path to root for first element
+    function pathToRoot(el: HTMLElement): HTMLElement[] {
+        const path: HTMLElement[] = [];
+        let current: HTMLElement | null = el;
+        while (current) {
+            path.push(current);
+            current = current.parentElement;
+        }
+        return path;
+    }
+
+    const first_path = pathToRoot(elements[0]);
+    const first_path_set = new Set(first_path);
+
+    // For each subsequent element, find the first ancestor in common with the first path
+    let common = first_path[first_path.length - 1]; // Start with documentElement
+    let best_depth = 0;
+
+    for (let i = 1; i < elements.length; i++) {
+        let current: HTMLElement | null = elements[i];
+        while (current) {
+            if (first_path_set.has(current)) {
+                const depth = first_path.indexOf(current);
+                if (depth > best_depth) {
+                    best_depth = depth;
+                }
+                common = current;
+                break;
+            }
+            current = current.parentElement;
+        }
+    }
+
+    return common;
+}
+
+/**
+ * Cluster fillable fields by DOM proximity.
+ * Groups fields that share a close common ancestor,
+ * allowing detection of "virtual forms" that don't use <form> tags.
+ */
+export function clusterFieldsByProximity(
+    elements: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[],
+    max_depth: number = 8
+): FieldCluster[] {
+    if (elements.length === 0) return [];
+    if (elements.length <= 3) {
+        // Few elements: treat as one cluster
+        const root = nearestCommonAncestor(elements as any as HTMLElement[]);
+        return [{
+            root,
+            elements,
+            score: elements.length * 2,
+            depth: 0,
+        }];
+    }
+
+    // Strategy: group elements by their nearest "meaningful" ancestor
+    // (section, fieldset, div with class, article, etc.)
+    const meaningful_selectors = 'form, fieldset, section, article, [role="form"], [class*="form"], [class*="section"], [class*="step"], [class*="group"], [class*="question"], main';
+
+    const clusters_map = new Map<HTMLElement, (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[]>();
+
+    for (const el of elements) {
+        // Find nearest meaningful container
+        let container = (el as HTMLElement).closest(meaningful_selectors) as HTMLElement | null;
+
+        // If no meaningful container, walk up max_depth levels
+        if (!container) {
+            let current: HTMLElement | null = el.parentElement;
+            let depth = 0;
+            while (current && depth < max_depth) {
+                // Stop at elements that seem like form groups (have multiple inputs)
+                const inputs_in_container = current.querySelectorAll('input, select, textarea, [contenteditable="true"]');
+                if (inputs_in_container.length >= 2) {
+                    container = current;
+                    break;
+                }
+                current = current.parentElement;
+                depth++;
+            }
+        }
+
+        if (!container) container = document.body;
+
+        if (!clusters_map.has(container)) {
+            clusters_map.set(container, []);
+        }
+        clusters_map.get(container)!.push(el);
+    }
+
+    // Convert to FieldCluster array and score
+    const clusters: FieldCluster[] = [];
+
+    for (const [root, group_elements] of clusters_map.entries()) {
+        let score = group_elements.length * 2;
+
+        // Bonus for form-like containers
+        const text = (root.textContent || '').toLowerCase();
+        if (text.includes('apply') || text.includes('application')) score += 15;
+        if (text.includes('resume') || text.includes('cv')) score += 20;
+        if (text.includes('submit')) score += 10;
+        if (root.tagName === 'FORM') score += 25;
+        if (root.getAttribute('role') === 'form') score += 20;
+
+        // Penalty for non-form content
+        if (text.includes('search') || text.includes('find job')) score -= 15;
+        if (text.includes('login') || text.includes('sign in')) score -= 15;
+
+        const depth = getElementDepth(root);
+
+        clusters.push({ root, elements: group_elements, score, depth });
+    }
+
+    // Sort by score descending
+    clusters.sort((a, b) => b.score - a.score);
+
+    return clusters;
+}
+
+function getElementDepth(el: HTMLElement): number {
+    let depth = 0;
+    let current: HTMLElement | null = el;
+    while (current) {
+        depth++;
+        current = current.parentElement;
+    }
+    return depth;
+}
+
+// ============================================================================
+// PLATFORM DETECTION
+// ============================================================================
+
+export type PlatformType =
+    | 'naukri'
+    | 'google_forms'
+    | 'typeform'
+    | 'greenhouse'
+    | 'lever'
+    | 'workday'
+    | 'linkedin'
+    | 'indeed'
+    | 'generic';
+
+/**
+ * Detect the current job platform from URL and DOM signals
+ */
+export function detectPlatform(): PlatformType {
+    const hostname = window.location.hostname.toLowerCase();
+    const url = window.location.href.toLowerCase();
+
+    if (hostname.includes('naukri.com')) return 'naukri';
+    if (hostname.includes('docs.google.com') && url.includes('/forms/')) return 'google_forms';
+    if (hostname.includes('typeform.com') || document.querySelector('[data-tf-element]')) return 'typeform';
+    if (hostname.includes('greenhouse.io') || hostname.includes('boards.greenhouse')) return 'greenhouse';
+    if (hostname.includes('lever.co') || hostname.includes('jobs.lever')) return 'lever';
+    if (hostname.includes('myworkdayjobs.com') || hostname.includes('workday.com')) return 'workday';
+    if (hostname.includes('linkedin.com')) return 'linkedin';
+    if (hostname.includes('indeed.com')) return 'indeed';
+
+    // Check for embedded ATS indicators
+    if (document.querySelector('[class*="greenhouse"]')) return 'greenhouse';
+    if (document.querySelector('[class*="lever-"]')) return 'lever';
+    if (document.querySelector('iframe[src*="greenhouse"]')) return 'greenhouse';
+    if (document.querySelector('iframe[src*="lever"]')) return 'lever';
+
+    return 'generic';
 }
 
 export function getFieldMetadata(field: HTMLElement): FormField | null {
@@ -603,6 +855,18 @@ export async function fillField(field: HTMLInputElement | HTMLSelectElement | HT
     if (!value) return;
 
     try {
+        // Handle contenteditable wrapper
+        if ((field as any).__contentEditableRef) {
+            const el = (field as any).__contentEditableRef as HTMLElement;
+            el.scrollIntoView({ behavior: 'auto', block: 'center' });
+            el.focus();
+            el.textContent = String(value);
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            el.blur();
+            return;
+        }
+
         // Ensure element is visible and interactive
         field.scrollIntoView({ behavior: 'auto', block: 'center' });
         field.focus();

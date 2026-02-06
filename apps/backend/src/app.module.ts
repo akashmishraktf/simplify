@@ -9,6 +9,7 @@ import { User } from "./users/entities/user.entity";
 import { UserProfile } from "./users/entities/user-profile.entity";
 import { Application } from "./applications/entities/application.entity";
 import { FieldMappingCache } from "./llm/entities/field-mapping-cache.entity";
+import { CustomAnswer } from "./llm/entities/custom-answer.entity";
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { FieldMappingCache } from "./llm/entities/field-mapping-cache.entity";
       useFactory: async (configService: ConfigService) => ({
         type: "postgres",
         url: configService.get<string>("DATABASE_URL"),
-        entities: [User, UserProfile, Application, FieldMappingCache],
+        entities: [User, UserProfile, Application, FieldMappingCache, CustomAnswer],
         synchronize: true, // Auto-create tables (dev only)
       }),
       inject: [ConfigService],
