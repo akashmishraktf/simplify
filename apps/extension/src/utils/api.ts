@@ -58,4 +58,55 @@ export const logout = async () => {
     await chrome.storage.local.remove(['access_token']);
 };
 
+// ========================================================================
+// Q&A Bank API
+// ========================================================================
+
+export const getQABank = async () => {
+    const response = await api.get('/v1/mapping/qa-bank');
+    return response.data;
+};
+
+export const createQAEntry = async (question_text: string, answer_text: string, tags: string[] = []) => {
+    const response = await api.post('/v1/mapping/qa-bank', { question_text, answer_text, tags });
+    return response.data;
+};
+
+export const updateQAEntry = async (id: string, data: { question_text?: string; answer_text?: string; tags?: string[] }) => {
+    const response = await api.put(`/v1/mapping/qa-bank/${id}`, data);
+    return response.data;
+};
+
+export const deleteQAEntry = async (id: string) => {
+    const response = await api.delete(`/v1/mapping/qa-bank/${id}`);
+    return response.data;
+};
+
+export const searchQABank = async (question_text: string, threshold: number = 0.5, top_n: number = 3) => {
+    const response = await api.post('/v1/mapping/qa-bank/search', { question_text, threshold, top_n });
+    return response.data;
+};
+
+export const recordQAUsage = async (id: string) => {
+    const response = await api.post(`/v1/mapping/qa-bank/${id}/use`);
+    return response.data;
+};
+
+// ========================================================================
+// Custom Answer Generation API
+// ========================================================================
+
+export const generateCustomAnswer = async (
+    question_text: string,
+    job_description: string = '',
+    url: string = ''
+) => {
+    const response = await api.post('/v1/mapping/custom-answer', {
+        question_text,
+        job_description,
+        url,
+    });
+    return response.data;
+};
+
 export default api;
