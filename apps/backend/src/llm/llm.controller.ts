@@ -32,8 +32,9 @@ export class LLMController {
 
   @UseGuards(JwtAuthGuard)
   @Post("guess")
-  async guessFieldMapping(@Body() payload: any) {
+  async guessFieldMapping(@Request() req: any, @Body() payload: any) {
     const { pageSignature, fields, url } = payload;
+    const apiKey = req.headers["x-gemini-api-key"];
 
     // Check cache first
     const cached = await this.mappingCacheRepository.findOne({
@@ -53,9 +54,9 @@ export class LLMController {
       };
     }
 
-    // Call LLM for new mapping
+    // Call LLM for new mapping (user-provided key takes priority)
     console.log("[LLM] Generating new mapping for:", url);
-    const mappings = await this.llmService.mapFields(fields);
+    const mappings = await this.llmService.mapFields(fields, apiKey);
 
     // Store in cache
     if (cached) {

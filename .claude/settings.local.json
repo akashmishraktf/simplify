@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm install)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: massive autofill performance improvements (50-150x faster)\n\n- Expanded field patterns from 22 to 50+ types with 300+ patterns\n- Implemented client-side caching system (30-day TTL)\n- Added hybrid autofill strategy: cache → rules → optional AI\n- Made LLM calls asynchronous and optional (95% cost reduction)\n- Improved UI with modern floating action button\n- Added progressive field filling with visual feedback\n\nPerformance improvements:\n- First visit: 10-15s → 200-300ms (50x faster)\n- Return visit: 10-15s → 50-100ms (150x faster)\n- 80-90% of fields now filled without AI\n- Only uses AI optionally for unknown fields\n\n🤖 Generated with Claude Code\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(git worktree:*)",
+      "Bash(git format-patch:*)",
+      "Bash(git am:*)",
+      "Bash(git commit:*)",
+      "Bash(git reset:*)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(python3:*)",
+      "Bash(node -e:*)"
+    ]
+  }
+}

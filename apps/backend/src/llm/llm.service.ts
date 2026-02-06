@@ -28,30 +28,41 @@ export class LLMService {
     const apiKey = this.configService.get<string>("GEMINI_API_KEY");
     if (apiKey) {
       this.genAI = new GoogleGenerativeAI(apiKey);
-      // gemini-pro is available on free tier (60 RPM)
       this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     }
   }
 
-  async mapFields(fields: FieldMetadata[]): Promise<FieldMapping[]> {
-    if (!this.model) {
-      // Fallback to heuristics if no API key
+  /**
+   * Initialize or get a model using the user-provided API key (from extension header).
+   * Falls back to the server-level key if available.
+   */
+  private getModel(userApiKey?: string) {
+    if (userApiKey) {
+      const genAI = new GoogleGenerativeAI(userApiKey);
+      return genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    }
+    return this.model;
+  }
+
+  async mapFields(fields: FieldMetadata[], userApiKey?: string): Promise<FieldMapping[]> {
+    const model = this.getModel(userApiKey);
+
+    if (!model) {
+      // No server key and no user key — fallback to heuristics
       return this.fallbackMapping(fields);
     }
 
     const prompt = this.buildMappingPrompt(fields);
 
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
 
-      // Parse JSON response
       const mappings = this.parseJSONResponse(text);
       return mappings;
     } catch (error) {
       console.error("[LLM] Field mapping failed:", error);
-      // Fallback to heuristics
       return this.fallbackMapping(fields);
     }
   }
