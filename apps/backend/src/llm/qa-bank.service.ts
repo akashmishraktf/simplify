@@ -31,6 +31,18 @@ export class QABankService {
         model: "text-embedding-004",
       });
     }
+    // No warning needed — user-provided key from extension header will be used
+  }
+
+  /**
+   * Get an embedding model using user-provided key or fall back to server key.
+   */
+  private getEmbeddingModel(userApiKey?: string) {
+    if (userApiKey) {
+      const genAI = new GoogleGenerativeAI(userApiKey);
+      return genAI.getGenerativeModel({ model: "text-embedding-004" });
+    }
+    return this.embedding_model;
   }
 
   /**
@@ -41,11 +53,7 @@ export class QABankService {
     apiKey?: string
   ): Promise<number[] | null> {
     try {
-      let model = this.embedding_model;
-      if (apiKey) {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        model = genAI.getGenerativeModel({ model: "text-embedding-004" });
-      }
+      const model = this.getEmbeddingModel(apiKey);
       if (!model) return null;
 
       const result = await model.embedContent(text);

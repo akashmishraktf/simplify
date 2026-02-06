@@ -97,17 +97,13 @@ export class AgentService {
 
   constructor(private configService: ConfigService) {
     const api_key = this.configService.get<string>("GEMINI_API_KEY");
-    console.log("[Agent] GEMINI_API_KEY configured:", api_key ? "Yes (length: " + api_key.length + ")" : "No");
-    
+
     if (api_key) {
       this.genAI = new GoogleGenerativeAI(api_key);
-      // gemini-pro is available on free tier (60 RPM)
-      const modelName = "gemini-2.5-flash";
-      this.model = this.genAI.getGenerativeModel({ model: modelName });
-      console.log(`[Agent] Gemini model initialized: ${modelName}`);
+      this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      console.log("[Agent] Server-level Gemini API key configured");
     } else {
-      console.warn("[Agent] WARNING: No GEMINI_API_KEY found. Using heuristic fallback.");
-      console.warn("[Agent] Add GEMINI_API_KEY=your_key to apps/backend/.env and restart the server");
+      console.log("[Agent] No server-level GEMINI_API_KEY. Will use user-provided key from extension.");
     }
   }
 
@@ -117,16 +113,15 @@ export class AgentService {
     page_url: string,
     apiKey?: string
   ): Promise<AgentFillResult[]> {
+    // User-provided key always takes priority over server key
     let modelToUse = this.model;
 
     if (apiKey) {
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
         modelToUse = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        console.log("[Agent] Using user-provided API key");
       } catch (e) {
         console.error("[Agent] Invalid user-provided API key:", e);
-        // Fallback to default model if exists, or heuristic
       }
     }
 
